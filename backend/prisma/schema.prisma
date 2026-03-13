@@ -13,20 +13,57 @@ datasource db {
 }
 
 enum UserRole {
-  USER
-  ADMIN
-  SUPERADMIN
+  CLIENT
   RIDER
-  STOREMANAGER
+  STORE_MANAGER
+  SUPER_ADMIN
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  image     String?
-  role      UserRole @default(USER)
+  id String @id @default(uuid())
+  name String
+  email String @unique
+  phone String  @unique
+  password String
+  role UserRole
+  avatarUrl String?
+  isActive Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  riderProfile RiderProfile?
+  // managedStore Store? @relation(fields: [managedStoreId], references: [id])
+  // managedStoreId String?
+}
+
+model RiderProfile {
+  id String @id @default(uuid())
+  userId String @unique
+  vehicleType String? //"bike", "scooter", "ev"
+  licenseNumber String?
+  currentLatitue Float?
+  currentLongitude Float?
+  lastLocationUpdate DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  totalDeliveries Int @default(0)
+  rating Float @default(5.0)
+}
+
+model Store {
+  id  String @id @default(uuid())
+  name String
+  address String
+  latitud Float
+  longitude Float
+  pincode String
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  managerId String @unique
+
+  manager User @relation(fields: [managerId], references: [id], onDelete: Cascade)
 }
