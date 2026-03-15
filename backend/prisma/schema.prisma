@@ -32,8 +32,8 @@ model User {
   updatedAt DateTime @updatedAt
 
   riderProfile RiderProfile?
-  // managedStore Store? @relation(fields: [managedStoreId], references: [id])
-  // managedStoreId String?
+  managedStore Store? @relation(fields: [managedStoreId], references: [id])
+  managedStoreId String?
 }
 
 model RiderProfile {
