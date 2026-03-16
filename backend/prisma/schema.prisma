@@ -16,7 +16,40 @@ enum UserRole {
   CLIENT
   RIDER
   STORE_MANAGER
-  SUPER_ADMIN
+  ADMIN
+}
+
+enum ProductCategory {
+  FRESH_VEGETABLES
+  FRESH_FRUITS
+  DAIRY
+  BREAD_EGGS
+  SNACKS_MUNCHIES
+  COLD_BEVERAGES
+  JUICES
+  INSTANT_FOODS
+  FROZEN_FOODS
+  READY_TO_COOK
+  TEA_COFFEE
+  HEALTH_DRINKS
+  BAKERY
+  BISCUITS_COOKIES
+  CHICKEN
+  MUTTON
+  FISH_SEAFOOD
+  EGGS
+  ATTA_FLOURS
+  RICE_PULSES
+  OILS_GHEE
+  SPICES_MASALAS
+  SWEETS_DESSERTS
+  CHOCOLATES
+  BEAUTY_PERSONAL_CARE
+  COSMETICS
+  BABY_PRODUCTS
+  PET_SUPPLIES
+  CLEANING_ESSENTIALS
+  HOUSEHOLD
 }
 
 model User {
@@ -25,22 +58,21 @@ model User {
   email String @unique
   phone String  @unique
   password String
-  role UserRole
-  avatarUrl String?
+  role UserRole @default(CLIENT)
+  avatarUrl String? 
+  //const defaultImage = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=888888&color=ffffff&size=128`;
   isActive Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   riderProfile RiderProfile?
-  managedStore Store? @relation(fields: [managedStoreId], references: [id])
-  managedStoreId String?
+  managedStores Store[]
 }
 
 model RiderProfile {
   id String @id @default(uuid())
   userId String @unique
-  vehicleType String? //"bike", "scooter", "ev"
-  licenseNumber String?
+  licenseNumber String
   currentLatitue Float?
   currentLongitude Float?
   lastLocationUpdate DateTime?
@@ -57,13 +89,22 @@ model Store {
   id  String @id @default(uuid())
   name String
   address String
-  latitud Float
-  longitude Float
+  latitude Float?
+  longitude Float?
   pincode String
   isActive Boolean @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  managerId String @unique
+  managerId String
 
   manager User @relation(fields: [managerId], references: [id], onDelete: Cascade)
 }
+
+model Category {
+  id  String @id @default(uuid())
+  name ProductCategory
+  slug String? @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
