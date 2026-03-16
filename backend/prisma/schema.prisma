@@ -52,6 +52,29 @@ enum ProductCategory {
   HOUSEHOLD
 }
 
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY_FOR_PICKUP
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  UPI
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
 model User {
   id String @id @default(uuid())
   name String
@@ -67,6 +90,7 @@ model User {
 
   riderProfile RiderProfile?
   managedStores Store[]
+  clientOrders Order[]
 }
 
 model RiderProfile {
@@ -76,13 +100,14 @@ model RiderProfile {
   currentLatitue Float?
   currentLongitude Float?
   lastLocationUpdate DateTime?
+  totalDeliveries Int @default(0)
+  rating Float @default(5.0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  totalDeliveries Int @default(0)
-  rating Float @default(5.0)
+  deliveredOrders Order[]
 }
 
 model Store {
@@ -99,6 +124,7 @@ model Store {
 
   manager User @relation(fields: [managerId], references: [id], onDelete: Cascade)
   products Product[]
+  orders Order[]
 }
 
 model Category {
@@ -126,4 +152,37 @@ model Product {
 
   category Category? @relation(fields: [categoryId], references: [id])
   store Store @relation(fields: [storeId], references: [id])
+
+  orderItems OrderItem[]
+}
+
+model Order {
+  id String @id @default(uuid())
+  clientId String
+  storeId String
+  riderId String
+  totalAmount Float
+  status OrderStatus @default(PENDING)
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus @default(PENDING)
+  deliveryAddress Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client User @relation(fields: [clientId], references: [id])
+  store Store @relation(fields: [storeId], references: [id])
+  rider RiderProfile @relation(fields: [riderId], references: [id])
+
+  items OrderItem[]
+}
+
+model OrderItem {
+  id String @id @default(uuid())
+  orderId String
+  productId String
+  quantity Int
+  price Float
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
 }
