@@ -98,17 +98,22 @@ enum NotificationType {
 
 //Prisma models
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  phone     String   @unique
-  password  String
-  role      UserRole @default(CLIENT)
-  avatarUrl String?
-  //const defaultImage = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=888888&color=ffffff&size=128`;
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String    @id @default(uuid())
+  name                String
+  email               String    @unique
+  phone               String    @unique
+  password            String
+  role                UserRole  @default(CLIENT)
+  avatarUrl           String?
+  isActive            Boolean   @default(true)
+  isVerified          Boolean   @default(false)
+  verificationToken   String?   @unique
+  verificationExpiry  DateTime?
+  passwordResetToken  String?   @unique
+  passwordResetExpiry DateTime?
+  refreshToken        String?   @unique
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   riderProfile  RiderProfile?
   managedStores Store[]
