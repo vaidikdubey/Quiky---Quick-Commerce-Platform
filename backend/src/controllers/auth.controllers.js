@@ -107,3 +107,63 @@ const registerUser = asyncHandler(async (req, res) => {
   );
 });
 
+const loginUser = asyncHandler(async (req, res) => {
+  const { email, password, phone } = req.body;
+
+  if (!email || !password || !phone)
+    throw new ApiError(404, "All fields are required");
+
+  let user;
+  //Find user conditionally, based on user providing email or phone number for login
+  if (email && !phone) {
+    user = await db.user.findUnique({
+      where: {
+        email,
+      },
+    });
+  } else if (phone && !email) {
+    user = await db.user.findUnique({
+      where: {
+        phone,
+      },
+    });
+  }
+
+  if (!user) throw new ApiError(401, "Invalid credentials");
+
+  const isPasswordMatched = await bcrypt.compare(password, user.password);
+
+  if (!isPasswordMatched) throw new ApiError(401, "Invalid credentials");
+
+  const accessToken = generateAccessToken({ id: user.id });
+  const refreshToken = generateRefreshToken({ id: user.id, role: user.role });
+
+  user = await db.user.update({
+    where: { id: user.id },
+    data: { refreshToken },
+  });
+
+  res.cookie("accessToken", accessToken, cookieOptions);
+
+  const refreshTokenCookieOptions = {
+    ...cookieOptions,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  };
+
+  res.cookie("refreshToken", refreshToken, refreshTokenCookieOptions);
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        accessToken,
+      },
+      "User login successful",
+    ),
+  );
+});
+
