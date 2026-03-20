@@ -490,3 +490,80 @@ const resendVerificationEmail = asyncHandler(async (req, res) => {
     ),
   );
 });
+
+const updateProfile = asyncHandler(async (req, res) => {
+  const { name, email, phone, avatarUrl } = req.body;
+
+  if (!name && !email && !phone && !avatarUrl)
+    throw new ApiError(400, "Please provide something to be updated");
+
+  const updatedData = {};
+  let temporaryToken = null;
+
+  if (name) updatedData.name = name;
+
+  if (email) {
+    const existingUser = await db.user.findUnique({ where: { email } });
+
+    if (existingUser && existingUser.id !== req.user.id)
+      throw new ApiError(
+        409,
+        "Email is already registered with another account",
+      );
+
+    updatedData.email = email;
+    updatedData.isVerified = false;
+
+    temporaryToken = generateTemporaryToken();
+    updatedData.verificationToken = temporaryToken.hashedToken;
+    updatedData.verificationExpiry = temporaryToken.tokenExpiry;
+  }
+
+  if (phone) updatedData.phone = phone;
+
+  if (avatarUrl) updatedData.avatarUrl = avatarUrl;
+
+  const user = await db.user.update({
+    where: { id: req.user.id },
+    data: updatedData,
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      role: true,
+      avatarUrl: true,
+      isActive: true,
+      isVerified: true,
+    },
+  });
+
+  if (email && temporaryToken) {
+    const emailOptions = {
+      email: user.email,
+      subject: "Verify your email",
+      mailgenContent: emailReverificationMailgenContent(
+        user.name,
+        `${process.env.BASE_URL}/api/v1/auth/verify/${temporaryToken.unHashedToken}`,
+      ),
+    };
+
+    await sendEmail(emailOptions);
+  }
+
+  res.status(200).json(
+    new ApiResponse(
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        avatarUrl: user.avatarUrl,
+        isActive: user.isActive,
+        isVerified: user.isVerified,
+      },
+      "User profile updated",
+    ),
+  );
+});
