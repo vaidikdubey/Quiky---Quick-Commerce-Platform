@@ -252,3 +252,19 @@ const getProfile = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, user, "User profile fetched"));
 });
 
+const logoutUser = asyncHandler(async (req, res) => {
+  const clearCookieOptions = {
+    ...cookieOptions,
+    maxAge: new Date(0),
+  };
+
+  res.clearCookie("accessToken", clearCookieOptions);
+  res.clearCookie("refreshToken", clearCookieOptions);
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, { message: "Tokens cleared" }, "User logged out"),
+    );
+});
+
