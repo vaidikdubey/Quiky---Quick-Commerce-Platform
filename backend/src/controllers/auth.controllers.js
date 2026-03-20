@@ -249,7 +249,40 @@ const getProfile = asyncHandler(async (req, res) => {
 
   if (!user) throw new ApiError(404, "User not found");
 
-  res.status(200).json(new ApiResponse(200, user, "User profile fetched"));
+  let responseData;
+
+  if (user.role != "RIDER") {
+    responseData = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      avatarUrl: user.avatarUrl,
+      isActive: user.isActive,
+      isVerified: user.isVerified,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  } else {
+    responseData = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      avatarUrl: user.avatarUrl,
+      isActive: user.isActive,
+      isVerified: user.isVerified,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      riderProfile: user.riderProfile,
+    };
+  }
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, responseData, "User profile fetched"));
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
