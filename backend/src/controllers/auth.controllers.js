@@ -406,3 +406,54 @@ const changePassword = asyncHandler(async (req, res) => {
     ),
   );
 });
+
+const resendVerificationEmail = asyncHandler(async (req, res) => {
+  let user = await db.user.findUnique({ where: { id: req.user.id } });
+
+  if (!user) throw new ApiError(404, "User not found");
+
+  if (user.isVerified)
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { message: "Email already verified" },
+          "Email already verified",
+        ),
+      );
+
+  const temporaryToken = generateTemporaryToken();
+
+  user = await db.user.update({
+    where: { id: user.id },
+    data: {
+      passwordResetToken: temporaryToken.hashedToken,
+      passwordResetExpiry: temporaryToken.tokenExpiry,
+    },
+  });
+
+  const emailOptions = {
+    email: user.email,
+    subject: "Verify your email",
+    mailgenContent: resendEmailVerificationMailgenContent(
+      user.name,
+      `${process.env.BASE_URL}/api/v1/auth/verify/${temporaryToken.unHashedToken}`,
+    ),
+  };
+
+  await sendEmail(emailOptions);
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      "Verification email sent successfully",
+    ),
+  );
+});
