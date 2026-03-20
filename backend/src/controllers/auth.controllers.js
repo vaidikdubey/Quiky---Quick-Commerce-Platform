@@ -216,3 +216,39 @@ const verifyUser = asyncHandler(async (req, res) => {
   );
 });
 
+const getProfile = asyncHandler(async (req, res) => {
+  const user = await db.user.findUnique({
+    where: { id: req.user.id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      password: true,
+      role: true,
+      avatarUrl: true,
+      isActive: true,
+      isVerified: true,
+      createdAt: true,
+      updatedAt: true,
+      riderProfile: {
+        select: {
+          id: true,
+          licenseNumber: true,
+          currentLatitue: true,
+          currentLongitude: true,
+          lastLocationUpdate: true,
+          totalDeliveries: true,
+          rating: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
+    },
+  });
+
+  if (!user) throw new ApiError(404, "User not found");
+
+  res.status(200).json(new ApiResponse(200, user, "User profile fetched"));
+});
+

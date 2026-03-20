@@ -7,6 +7,7 @@ import {
   changePasswordValidate,
 } from "../validators/index.js";
 import { isLoggedIn } from "../middlewares/auth.middleware.js";
+import { validate } from "../middlewares/validator.middleware.js";
 import {
   changePassword,
   deleteProfile,
