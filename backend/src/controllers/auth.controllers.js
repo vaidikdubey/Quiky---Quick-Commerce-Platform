@@ -268,3 +268,90 @@ const logoutUser = asyncHandler(async (req, res) => {
     );
 });
 
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) throw new ApiError(404, "Email is required");
+
+  let user = await db.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) throw new ApiError(404, "Invalid email address");
+
+  const temporaryToken = generateTemporaryToken();
+
+  user = await db.user.update({
+    where: { email },
+    data: {
+      passwordResetToken: temporaryToken.hashedToken,
+      passwordResetExpiry: temporaryToken.tokenExpiry,
+    },
+  });
+
+  const mailOptions = {
+    email: user.email,
+    subject: "Reset your password",
+    mailgenContent: forgotPasswordMailgenContent(
+      user.name,
+      `${process.env.BASE_URL}/api/v1/auth/reset-password/${temporaryToken.unHashedToken}`,
+    ),
+  };
+
+  await sendEmail(mailOptions);
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { message: "Email sent successfully" },
+        "Forgot password successful",
+      ),
+    );
+});
+
+const resetPassword = asyncHandler(async (req, res) => {
+  const { token } = req.params;
+
+  const { password } = req.body;
+
+  if (!token) throw new ApiError(404, "Token not found");
+
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+  let user = await db.user.findUnique({
+    where: {
+      passwordResetToken: hashedToken,
+      passwordResetExpiry: {
+        gt: new Date(),
+      },
+    },
+  });
+
+  if (!user) throw new ApiError(404, "User not found");
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  user = await db.user.update({
+    where: { id: user.id },
+    data: {
+      password: hashedPassword,
+      passwordResetToken: null,
+      passwordResetExpiry: null,
+    },
+  });
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        id: user.id,
+        name: user.name,
+        email: user.emai,
+        role: user.role,
+      },
+      "Password reset successful",
+    ),
+  );
+});
