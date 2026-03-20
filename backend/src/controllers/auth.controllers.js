@@ -167,3 +167,52 @@ const loginUser = asyncHandler(async (req, res) => {
   );
 });
 
+const verifyUser = asyncHandler(async (req, res) => {
+  const { token } = req.params;
+
+  if (!token) throw new ApiError(404, "Token not found");
+
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+  let user = await db.user.findUnique({
+    where: {
+      verificationToken: hashedToken,
+      verificationExpiry: {
+        gt: new Date(),
+      },
+    },
+  });
+
+  if (!user) throw new ApiError(404, "Invalid token");
+
+  user = await db.user.update({
+    where: { id: user.id },
+    data: {
+      isVerified: true,
+      verificationToken: null,
+      verificationExpiry: null,
+    },
+  });
+
+  const emailOptions = {
+    email: user.email,
+    subject: "Welcome to Quiky!",
+    mailgenContent: verifiedEmailMailgenContent(user.name),
+  };
+
+  await sendEmail(emailOptions);
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      "Email verification successful",
+    ),
+  );
+});
+
