@@ -567,3 +567,65 @@ const updateProfile = asyncHandler(async (req, res) => {
     ),
   );
 });
+
+const deleteProfile = asyncHandler(async (req, res) => {
+  const { password } = req.body;
+
+  if (!password)
+    throw new ApiError(404, "Password is required to delete account");
+
+  let user = await db.user.findUnique({ where: { id: req.user.id } });
+
+  if (!user) throw new ApiError(404, "User not found");
+
+  const isPasswordMatched = await bcrypt.compare(password, user.password);
+
+  if (!isPasswordMatched) throw new ApiError(401, "Invalid password");
+
+  user = await db.user.delete({
+    where: { id: req.user.id },
+  });
+
+  const emailOptions = {
+    email: user.email,
+    subject: "Quiky account deletion!",
+    mailgenContent: profileDeletionMailgenContent(user.name),
+  };
+
+  await sendEmail(emailOptions);
+
+  const clearCookieOptions = {
+    ...cookieOptions,
+    maxAge: new Date(0),
+  };
+
+  res
+    .clearCookie("accessToken", clearCookieOptions)
+    .clearCookie("refreshToken", clearCookieOptions)
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          name: user.name,
+          email: user.email,
+          deletedAt: new Date(),
+        },
+        "User account and session deleted successfully",
+      ),
+    );
+});
+
+export {
+  registerUser,
+  loginUser,
+  verifyUser,
+  getProfile,
+  logoutUser,
+  forgotPassword,
+  resetPassword,
+  changePassword,
+  resendVerificationEmail,
+  updateProfile,
+  deleteProfile,
+};
