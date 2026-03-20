@@ -34,7 +34,7 @@ router.route("/login").post(userLoginValidator(), validate, loginUser);
 
 router.route("/verify/:token").get(verifyUser);
 
-route.route("/send-otp").post(isLoggedIn, sendOTP);
+router.route("/send-otp").post(isLoggedIn, sendOTP);
 
 router.route("/verify-phone").post(isLoggedIn, verifyPhone);
 
