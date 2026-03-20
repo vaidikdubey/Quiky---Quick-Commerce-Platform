@@ -355,3 +355,54 @@ const resetPassword = asyncHandler(async (req, res) => {
     ),
   );
 });
+
+const changePassword = asyncHandler(async (req, res) => {
+  let user = await db.user.findUnique({
+    where: { id: req.user.id },
+  });
+
+  if (!user) throw new ApiError(404, "User not found");
+
+  const { oldPassword, newPassword } = req.body;
+
+  const isPasswordMatched = await bcrypt.compare(oldPassword, user.password);
+
+  if (!isPasswordMatched)
+    throw new ApiError(400, "Incorrect existing password");
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  const accessToken = generateAccessToken({ id: user.id });
+  const refreshToken = generateRefreshToken({ id: user.id, role: user.role });
+
+  user = await db.user.update({
+    where: { id: user.id },
+    data: {
+      password: hashedPassword,
+      refreshToken,
+    },
+  });
+
+  res.cookie("accessToken", accessToken, cookieOptions);
+
+  const refreshTokenCookieOptions = {
+    ...cookieOptions,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  };
+
+  res.cookie("refreshToken", refreshToken, refreshTokenCookieOptions);
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        accessToken,
+      },
+      "Password change successful",
+    ),
+  );
+});
