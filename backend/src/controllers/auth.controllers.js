@@ -7,6 +7,7 @@ import {
   generateAccessToken,
   generateRefreshToken,
   generateTemporaryToken,
+  generateOTP,
 } from "../utils/generate-tokens.js";
 import {
   emailVerificationMailgenContent,
@@ -19,6 +20,7 @@ import {
 } from "../utils/mail.js";
 import { cookieOptions } from "../utils/constants.js";
 import crypto from "crypto";
+import twilio from "twilio";
 
 const registerUser = asyncHandler(async (req, res) => {
   const defaultImage = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || "User")}&background=888888&color=ffffff&size=128`;
@@ -214,6 +216,100 @@ const verifyUser = asyncHandler(async (req, res) => {
       "Email verification successful",
     ),
   );
+});
+
+const sendOTP = asyncHandler(async (req, res) => {
+  const { id } = req.user;
+
+  const { phone } = req.body;
+
+  if (!phone) throw new ApiError(404, "Phone number not found");
+
+  const user = await db.user.findUnique({
+    where: {
+      phone,
+    },
+  });
+
+  if (!user) throw new ApiError(404, "User not found");
+
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+
+  const client = twilio(accountSid, authToken);
+
+  const { OTP, OTPExpiry } = generateOTP();
+
+  const updatedUser = await db.user.update({
+    where: {
+      id,
+      phone,
+    },
+    data: {
+      OTP,
+      OTPExpiry,
+    },
+    select: {
+      name: true,
+      email: true,
+      phone: true,
+      role: true,
+      isActive: true,
+    },
+  });
+
+  await client.messages
+    .create({
+      body: `Your OTP for your Quiky account linked to ${phone} is ${OTP}`,
+      from: process.env.TWILIO_SENDER_PHONE_NUMBER,
+      to: `+91${phone}`,
+    })
+    .then(() =>
+      res
+        .status(200)
+        .json(new ApiResponse(200, updatedUser, "OTP sent successfully")),
+    );
+});
+
+const verifyPhone = asyncHandler(async (req, res) => {
+  const { OTP } = req.body;
+
+  if (!OTP) throw new ApiError(404, "OTP not found");
+
+  const user = await db.user.findUnique({
+    where: {
+      OTP,
+      OTPExpiry: {
+        gt: new Date(),
+      },
+    },
+  });
+
+  if (!user) throw new ApiError(404, "Invalid OTP");
+
+  const updatedUser = await db.user.update({
+    where: {
+      OTP,
+    },
+    data: {
+      OTP: null,
+      OTPExpiry: null,
+      isPhoneVerified: true,
+    },
+    select: {
+      name: true,
+      email: true,
+      phone: true,
+      role: true,
+      isActive: true,
+      isVerified: true,
+      isPhoneVerified: true,
+    },
+  });
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, updatedUser, "Phone verified successfully"));
 });
 
 const getProfile = asyncHandler(async (req, res) => {
@@ -620,6 +716,8 @@ export {
   registerUser,
   loginUser,
   verifyUser,
+  sendOTP,
+  verifyPhone,
   getProfile,
   logoutUser,
   forgotPassword,

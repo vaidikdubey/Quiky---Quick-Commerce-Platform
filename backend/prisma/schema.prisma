@@ -107,6 +107,9 @@ model User {
   avatarUrl           String?
   isActive            Boolean   @default(true)
   isVerified          Boolean   @default(false)
+  OTP                 Int?      @unique
+  OTPExpiry           DateTime?
+  isPhoneVerified     Boolean   @default(false)
   verificationToken   String?   @unique
   verificationExpiry  DateTime?
   passwordResetToken  String?   @unique

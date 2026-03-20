@@ -18,7 +18,9 @@ import {
   registerUser,
   resendVerificationEmail,
   resetPassword,
+  sendOTP,
   updateProfile,
+  verifyPhone,
   verifyUser,
 } from "../controllers/auth.controllers.js";
 
@@ -31,6 +33,10 @@ router
 router.route("/login").post(userLoginValidator(), validate, loginUser);
 
 router.route("/verify/:token").get(verifyUser);
+
+route.route("/send-otp").post(isLoggedIn, sendOTP);
+
+router.route("/verify-phone").post(isLoggedIn, verifyPhone);
 
 router.route("/me").get(isLoggedIn, getProfile);
 
