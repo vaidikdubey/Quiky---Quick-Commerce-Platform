@@ -32,8 +32,10 @@ router
 
 router.route("/login").post(userLoginValidator(), validate, loginUser);
 
+//OTP Verification route
 router.route("/verify/:token").get(verifyUser);
 
+//OTP Generation route
 router.route("/send-otp").post(isLoggedIn, sendOTP);
 
 router.route("/verify-phone").post(isLoggedIn, verifyPhone);
