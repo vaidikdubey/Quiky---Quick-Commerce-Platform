@@ -116,11 +116,20 @@ const registerRider = asyncHandler(async (req, res) => {
     where: {
       id,
     },
+    select: {
+      name: true,
+      email: true,
+      phone: true,
+      avatarUrl: true,
+      isVerified: true,
+      isPhoneVerified: true,
+    },
   });
 
   if (!user) throw new ApiError(404, "User not found");
 
-  if (user.role !== "RIDER") throw new ApiError(400, "User is not a rider");
+  if (user.role !== "RIDER")
+    throw new ApiError(400, "User is not registered as a rider");
 
   const { licenseNumber } = req.body;
 
@@ -141,7 +150,6 @@ const registerRider = asyncHandler(async (req, res) => {
     },
     select: {
       id: true,
-      userId: true,
       licenseNumber: true,
       currentLatitue: true,
       currentLongitude: true,
@@ -151,12 +159,123 @@ const registerRider = asyncHandler(async (req, res) => {
     },
   });
 
-  res
-    .status(201)
-    .json(new ApiResponse(201, rider, "Rider registered successfully"));
+  res.status(201).json(
+    new ApiResponse(
+      201,
+      {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          avatar: user.avatarUrl,
+          isVerified: user.isVerified,
+          isPhoneVerified: user.isPhoneVerified,
+        },
+        rider: {
+          id: rider.id,
+          license_number: rider.licenseNumber,
+          current_lat: rider.currentLatitue,
+          current_long: rider.currentLongitude,
+          last_location: rider.lastLocationUpdate,
+          total_deliveries: rider.totalDeliveries,
+          rating: rider.rating,
+        },
+      },
+      "Rider registered successfully",
+    ),
+  );
 });
 
-const registerStore = asyncHandler(async (req, res) => {});
+const registerStore = asyncHandler(async (req, res) => {
+  const { id } = req.user;
+
+  const user = await db.user.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      name: true,
+      email: true,
+      phone: true,
+      avatarUrl: true,
+      isVerified: true,
+      isPhoneVerified: true,
+    },
+  });
+
+  if (!user) throw new ApiError(404, "User not found");
+
+  if (user.role !== "STORE_MANAGER")
+    throw new ApiError(400, "User is not registered as store manager");
+
+  const {
+    name,
+    address,
+    latitude = null,
+    longitude = null,
+    pincode,
+  } = req.body;
+
+  if (!name || !address || !pincode)
+    throw new ApiError(400, "Some required fields are missing");
+
+  const existingStore = await db.Store.findUnique({
+    where: {
+      managerId: id,
+      name,
+      address,
+      pincode,
+    },
+  });
+
+  if (!existingStore) throw new ApiError(400, "Store already exists");
+
+  const store = await db.Store.create({
+    data: {
+      name,
+      address,
+      latitude,
+      longitude,
+      pincode,
+      managerId: id,
+    },
+    select: {
+      id: true,
+      name: true,
+      address: true,
+      latitude: true,
+      longitude: true,
+      pincode: true,
+    },
+  });
+
+  res.status(201).json(
+    new ApiResponse(
+      201,
+      {
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          avatar: user.avatarUrl,
+          isVerified: user.isVerified,
+          isPhoneVerified: user.isPhoneVerified,
+        },
+        store: {
+          id: store.id,
+          name: store.name,
+          address: store.address,
+          latitude: store.latitude,
+          longitude: store.longitude,
+          pincode: store.pincode,
+        },
+      },
+      "Store registered successfully",
+    ),
+  );
+});
 
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password, phone } = req.body;

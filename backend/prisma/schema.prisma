@@ -159,6 +159,8 @@ model Store {
   products      Product[]
   orders        Order[]
   notifications Notification[]
+
+  @@unique([managerId, name, address, pincode])
 }
 
 model Category {
