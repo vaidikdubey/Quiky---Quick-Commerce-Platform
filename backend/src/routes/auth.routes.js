@@ -1,6 +1,8 @@
 import { Router } from "express";
 import {
   userRegistrationValidator,
+  riderProfileValidator,
+  storeRegisterValidator,
   userLoginValidator,
   forgotPasswordValidator,
   resetPasswordValidate,
@@ -15,6 +17,8 @@ import {
   getProfile,
   loginUser,
   logoutUser,
+  registerRider,
+  registerStore,
   registerUser,
   resendVerificationEmail,
   resetPassword,
@@ -32,11 +36,11 @@ router
 
 router
   .route("/register/rider")
-  .post(isLoggedIn, registerRider);
+  .post(isLoggedIn, riderProfileValidator(), validate, registerRider);
 
 router
   .route("/register/store")
-.post()
+  .post(isLoggedIn, storeRegisterValidator(), validate, registerStore);
 
 router.route("/login").post(userLoginValidator(), validate, loginUser);
 

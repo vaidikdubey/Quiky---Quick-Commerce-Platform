@@ -109,6 +109,10 @@ const registerUser = asyncHandler(async (req, res) => {
   );
 });
 
+const registerRider = asyncHandler(async (req, res) => {});
+
+const registerStore = asyncHandler(async (req, res) => {});
+
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password, phone } = req.body;
 
@@ -714,6 +718,8 @@ const deleteProfile = asyncHandler(async (req, res) => {
 
 export {
   registerUser,
+  registerRider,
+  registerStore,
   loginUser,
   verifyUser,
   sendOTP,
