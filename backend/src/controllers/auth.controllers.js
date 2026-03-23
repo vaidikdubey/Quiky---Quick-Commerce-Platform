@@ -109,7 +109,52 @@ const registerUser = asyncHandler(async (req, res) => {
   );
 });
 
-const registerRider = asyncHandler(async (req, res) => {});
+const registerRider = asyncHandler(async (req, res) => {
+  const { id } = req.user;
+
+  const user = await db.user.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!user) throw new ApiError(404, "User not found");
+
+  if (user.role !== "RIDER") throw new ApiError(400, "User is not a rider");
+
+  const { licenseNumber } = req.body;
+
+  if (!licenseNumber) throw new ApiError(400, "License number is required");
+
+  const existingRider = await db.RiderProfile.findUnique({
+    where: {
+      userId: id,
+    },
+  });
+
+  if (existingRider) throw new ApiError(400, "Rider already exists");
+
+  const rider = await db.RiderProfile.create({
+    data: {
+      userId: id,
+      licenseNumber,
+    },
+    select: {
+      id: true,
+      userId: true,
+      licenseNumber: true,
+      currentLatitue: true,
+      currentLongitude: true,
+      lastLocationUpdate: true,
+      totalDeliveries: true,
+      rating: true,
+    },
+  });
+
+  res
+    .status(201)
+    .json(new ApiResponse(201, rider, "Rider registered successfully"));
+});
 
 const registerStore = asyncHandler(async (req, res) => {});
 
