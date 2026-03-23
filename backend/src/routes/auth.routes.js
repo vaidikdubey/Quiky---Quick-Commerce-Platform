@@ -30,6 +30,14 @@ router
   .route("/register")
   .post(userRegistrationValidator(), validate, registerUser);
 
+router
+  .route("/register/rider")
+  .post(isLoggedIn, registerRider);
+
+router
+  .route("/register/store")
+.post()
+
 router.route("/login").post(userLoginValidator(), validate, loginUser);
 
 //OTP Verification route

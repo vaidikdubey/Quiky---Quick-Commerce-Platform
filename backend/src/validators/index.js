@@ -23,6 +23,28 @@ const userRegistrationValidator = () => {
   ];
 };
 
+const storeRegisterValidator = () => {
+  return [
+    body("name")
+      .trim()
+      .notEmpty()
+      .withMessage("Store name is required")
+      .isLength({ min: 3 }),
+    body("address")
+      .trim()
+      .notEmpty()
+      .withMessage("Store address is required")
+      .isLength({ min: 3 }),
+    body("latitude").optional().isLatLong().withMessage("Invalid latitude"),
+    body("longitude").optional().isLatLong().withMessage("Invalid longitude"),
+    body("pincode")
+      .trim()
+      .notEmpty()
+      .withMessage("Pincode is required")
+      .isPostalCode("IN"),
+  ];
+};
+
 const userLoginValidator = () => {
   return [
     body("email")
@@ -80,6 +102,7 @@ const changePasswordValidate = () => {
 
 export {
   userRegistrationValidator,
+  storeRegisterValidator,
   userLoginValidator,
   forgotPasswordValidator,
   resetPasswordValidate,
