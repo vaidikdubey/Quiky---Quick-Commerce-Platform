@@ -23,6 +23,38 @@ const userRegistrationValidator = () => {
   ];
 };
 
+const riderProfileValidator = () => {
+  return [
+    body("licenseNumber")
+      .trim()
+      .notEmpty()
+      .withMessage("License number is required")
+      .isLength({ min: 9, max: 11 })
+      .isAlphanumeric("en-IN", { ignore: " " })
+      .withMessage("Invalid license number format")
+      .matches(
+        /^(?:[A-Z]{2}\s?\d{1,2}\s?[A-Z]{0,3}\s?\d{1,4}|[0-9]{2}\s?BH\s?[0-9]{4}\s?[A-Z]{2})$/,
+      )
+      .withMessage("Invalid license number"),
+    body("currentLatitue")
+      .optional()
+      .isLatLong()
+      .withMessage("Invalid latitude"),
+    body("currentLongitude")
+      .optional()
+      .isLatLong()
+      .withMessage("Invalid latitude"),
+    body("totalDeliveries")
+      .optional()
+      .isInt({ min: 0 })
+      .withMessage("Invalid total deliveries"),
+    body("rating")
+      .optional()
+      .isFloat({ min: 0, max: 5 })
+      .withMessage("Invalid rating"),
+  ];
+};
+
 const storeRegisterValidator = () => {
   return [
     body("name")
@@ -102,6 +134,7 @@ const changePasswordValidate = () => {
 
 export {
   userRegistrationValidator,
+  riderProfileValidator,
   storeRegisterValidator,
   userLoginValidator,
   forgotPasswordValidator,
