@@ -21,11 +21,14 @@ import {
 import { cookieOptions } from "../utils/constants.js";
 import crypto from "crypto";
 import twilio from "twilio";
+import { randomColor } from "../utils/random-color.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, phone, password, role, avatarUrl } = req.body;
 
-  const defaultImage = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=888888&color=ffffff&size=128`;
+  const { color, complementColor } = randomColor();
+
+  const defaultImage = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${color}&color=${complementColor}&size=128`;
 
   const finalAvatarUrl = avatarUrl || defaultImage;
 
