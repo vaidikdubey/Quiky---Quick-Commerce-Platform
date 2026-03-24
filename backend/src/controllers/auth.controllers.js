@@ -878,6 +878,41 @@ const deleteProfile = asyncHandler(async (req, res) => {
     );
 });
 
+const generateDefaultImage = asyncHandler(async (req, res) => {
+  const { id } = req.user;
+
+  const user = await db.user.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      name: true,
+      avatarUrl: true,
+    },
+  });
+
+  const { color, complementColor } = randomColor();
+
+  const defaultImage = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=${color}&color=${complementColor}&size=128`;
+
+  const updatedUser = await db.user.update({
+    where: {
+      id,
+    },
+    data: {
+      avatarUrl: defaultImage,
+    },
+    select: {
+      name: true,
+      avatarUrl: true,
+    },
+  });
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, updatedUser, "Default image generated"));
+});
+
 export {
   registerUser,
   registerRider,
@@ -894,4 +929,5 @@ export {
   resendVerificationEmail,
   updateProfile,
   deleteProfile,
+  generateDefaultImage,
 };

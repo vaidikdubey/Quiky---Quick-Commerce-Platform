@@ -14,6 +14,7 @@ import {
   changePassword,
   deleteProfile,
   forgotPassword,
+  generateDefaultImage,
   getProfile,
   loginUser,
   logoutUser,
@@ -73,5 +74,7 @@ router
 router.route("/update-profile").patch(isLoggedIn, updateProfile);
 
 router.route("/delete-user").delete(isLoggedIn, deleteProfile);
+
+router.route("/generate-default-image").get(isLoggedIn, generateDefaultImage);
 
 export default router;
