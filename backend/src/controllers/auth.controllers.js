@@ -23,16 +23,11 @@ import crypto from "crypto";
 import twilio from "twilio";
 
 const registerUser = asyncHandler(async (req, res) => {
-  const {
-    name,
-    email,
-    phone,
-    password,
-    role,
-    avatarUrl = defaultImage,
-  } = req.body;
+  const { name, email, phone, password, role, avatarUrl } = req.body;
 
-  const defaultImage = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "User")}&background=888888&color=ffffff&size=128`;
+  const defaultImage = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=888888&color=ffffff&size=128`;
+
+  const finalAvatarUrl = avatarUrl || defaultImage;
 
   if (!name || !email || !password || !role || !phone)
     throw new ApiError(400, "All fields are required");
@@ -57,7 +52,7 @@ const registerUser = asyncHandler(async (req, res) => {
       phone,
       password: hashedPassword,
       role,
-      avatarUrl,
+      avatarUrl: finalAvatarUrl,
       verificationToken: temporaryToken.hashedToken,
       verificationExpiry: temporaryToken.tokenExpiry,
     },
