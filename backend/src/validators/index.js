@@ -80,11 +80,19 @@ const storeRegisterValidator = () => {
 const userLoginValidator = () => {
   return [
     body("email")
+      .optional()
       .trim()
       .notEmpty()
       .withMessage("Email is required")
       .isEmail()
       .withMessage("Email is invalid"),
+    body("phone")
+      .optional()
+      .trim()
+      .notEmpty()
+      .withMessage("Phone number is required")
+      .isMobilePhone("en-IN")
+      .withMessage("Invalid phone number"),
     body("password").notEmpty().withMessage("Password cannot be empty"),
   ];
 };

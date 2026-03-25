@@ -278,7 +278,7 @@ const registerStore = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password, phone } = req.body;
 
-  if (!email || !password || !phone)
+  if (!email && !password && !phone)
     throw new ApiError(404, "All fields are required");
 
   let user;
