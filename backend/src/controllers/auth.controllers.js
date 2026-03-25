@@ -118,6 +118,7 @@ const registerRider = asyncHandler(async (req, res) => {
       name: true,
       email: true,
       phone: true,
+      role: true,
       avatarUrl: true,
       isVerified: true,
       isPhoneVerified: true,

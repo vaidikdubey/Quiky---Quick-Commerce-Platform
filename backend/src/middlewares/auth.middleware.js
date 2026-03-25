@@ -3,6 +3,10 @@ import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import jwt from "jsonwebtoken";
 import { cookieOptions } from "../utils/constants.js";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+} from "../utils/generate-tokens.js";
 
 export const isLoggedIn = asyncHandler(async (req, res, next) => {
   //get access token & refresh token from req.cookie()
@@ -61,17 +65,17 @@ export const isLoggedIn = asyncHandler(async (req, res, next) => {
         select: {
           id: true,
           name: true,
+          phone: true,
           role: true,
-          image: true,
           refreshToken: true,
         },
       });
 
-      if (!user || refreshToken != user.refreshToken)
+      if (!user || refreshToken !== user.refreshToken)
         throw new ApiError(401, "Unauthorized");
 
-      const newAccessToken = user.generateAccessToken({ id: user.id });
-      const newRefreshToken = user.generateRefreshToken({
+      const newAccessToken = generateAccessToken({ id: user.id });
+      const newRefreshToken = generateRefreshToken({
         id: user.id,
         role: user.role,
       });
@@ -103,15 +107,20 @@ export const isLoggedIn = asyncHandler(async (req, res, next) => {
 
       return next();
     } catch (error) {
+      console.error("Error: ", error);
       throw new ApiError(401, "Unauthorized");
     }
   }
 });
 
 export const checkAdmin = asyncHandler(async (req, res, next) => {
-  const user = req.user
+  const user = req.user;
 
-  if (!user || user.role === "STUDENT") throw new ApiError(403, "Access denied - You don't have access to this resource");
+  if (!user || user.role === "STUDENT")
+    throw new ApiError(
+      403,
+      "Access denied - You don't have access to this resource",
+    );
 
   return next();
-})
+});
