@@ -209,6 +209,7 @@ const registerStore = asyncHandler(async (req, res) => {
   if (user.role !== "STORE_MANAGER")
     throw new ApiError(400, "User is not registered as store manager");
 
+  //latitute and longitude are optional
   const {
     name,
     address,
@@ -220,6 +221,7 @@ const registerStore = asyncHandler(async (req, res) => {
   if (!name || !address || !pincode)
     throw new ApiError(400, "Some required fields are missing");
 
+  //Using unique constraints as provided in model. Requires a unique combination of managerId, store name, address and pincode. This allows for single user to have multiple stores (with same manager Id).
   const existingStore = await db.Store.findUnique({
     where: {
       managerId: id,
