@@ -142,6 +142,7 @@ const registerRider = asyncHandler(async (req, res) => {
 
   if (existingRider) throw new ApiError(400, "Rider already exists");
 
+  //Find user based on userId and license number, such that user in case of same user id (highly unlikely) the license number (which is unique as it is a govt. ID) will help keep the riders unique
   const rider = await db.RiderProfile.create({
     data: {
       userId: id,
