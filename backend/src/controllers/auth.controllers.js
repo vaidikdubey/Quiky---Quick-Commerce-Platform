@@ -413,13 +413,15 @@ const sendOTP = asyncHandler(async (req, res) => {
 
   const { OTP, OTPExpiry } = generateOTP();
 
+  const updatedOTP = +OTP; //Typecast OTP to number
+
   const updatedUser = await db.user.update({
     where: {
       id,
       phone,
     },
     data: {
-      OTP,
+      OTP: updatedOTP,
       OTPExpiry,
     },
     select: {
@@ -433,7 +435,7 @@ const sendOTP = asyncHandler(async (req, res) => {
 
   await client.messages
     .create({
-      body: `Your OTP for your Quiky account linked to ${phone} is ${OTP}`,
+      body: `Your OTP for verifying your phone number linked with Quiky is ${OTP}. Valid for 20 minutes.`,
       from: process.env.TWILIO_SENDER_PHONE_NUMBER,
       to: `+91${phone}`,
     })
@@ -445,24 +447,32 @@ const sendOTP = asyncHandler(async (req, res) => {
 });
 
 const verifyPhone = asyncHandler(async (req, res) => {
+  const { id } = req.user;
+
   const { OTP } = req.body;
 
   if (!OTP) throw new ApiError(404, "OTP not found");
 
   const user = await db.user.findUnique({
     where: {
-      OTP,
-      OTPExpiry: {
-        gt: new Date(),
-      },
+      id,
+    },
+    select: {
+      OTP: true,
+      OTPExpiry: true,
     },
   });
 
-  if (!user) throw new ApiError(404, "Invalid OTP");
+  if (!user) throw new ApiError(404, "User not found");
+
+  if (user.OTP != Number(OTP) || user.OTPExpiry < Date.now()) {
+    if (user.OTPExpiry < Date.now()) throw new ApiError(400, "OTP expired");
+    throw new ApiError(400, "Invalid OTP");
+  }
 
   const updatedUser = await db.user.update({
     where: {
-      OTP,
+      id,
     },
     data: {
       OTP: null,

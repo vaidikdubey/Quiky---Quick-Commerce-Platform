@@ -38,7 +38,7 @@ export const generateOTP = function () {
 
   let OTPExpiry = Date.now() + 20 * 60 * 60; //20 mins
 
-  OTPExpiry = new Date(tokenExpiry);
+  OTPExpiry = new Date(OTPExpiry);
 
   return { OTP, OTPExpiry };
 };
