@@ -225,14 +225,16 @@ const registerStore = asyncHandler(async (req, res) => {
   //Using unique constraints as provided in model. Requires a unique combination of managerId, store name, address and pincode. This allows for single user to have multiple stores (with same manager Id).
   const existingStore = await db.Store.findUnique({
     where: {
-      managerId: id,
-      name,
-      address,
-      pincode,
+      managerId_name_address_pincode: {
+        managerId: id,
+        name,
+        address,
+        pincode,
+      },
     },
   });
 
-  if (!existingStore) throw new ApiError(400, "Store already exists");
+  if (existingStore) throw new ApiError(400, "Store already exists");
 
   const store = await db.Store.create({
     data: {
