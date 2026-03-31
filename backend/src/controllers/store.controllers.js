@@ -2,6 +2,7 @@ import { db } from "../db/db.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
+import { Prisma } from "../generated/prisma/index.js";
 
 const getAllStoresManaged = asyncHandler(async (req, res) => {
   const { id } = req.user;
@@ -187,7 +188,53 @@ const deleteStore = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, deletedStore, "Store deleted successfully"));
 });
 
-const getNearbyStores = asyncHandler(async (req, res) => {});
+const getNearbyStores = asyncHandler(async (req, res) => {
+  const { id } = req.user;
+
+  const { userLatitude, userLongitude, searchRadius, storeLimit } = req.body;
+
+  //Default radius to search for stores
+  const _radius = searchRadius ?? 10;
+  const _storeLimit = storeLimit ?? 30;
+
+  //SQL query to find nearby stores using Haversine formula
+  const nearbyStoresQuery = Prisma.sql`
+  SELECT
+    id,
+    name,
+    address,
+    latitude,
+    longitude,
+    pincode,
+    -- Haversine formula to calculate distance of each store from user
+    (6371 * acos(
+      LEAST(1.0,
+        cos(radians(${userLatitude})) * cos(radians(latitude)) *
+        cos(radians(longitude) - radians(${userLongitude})) +
+        sin(radians(${userLatitude})) * sin(radians(latitude))
+      )
+    )) AS distance_km
+    FROM "Store"
+    WHERE "isActive" = true
+    AND latitude IS NOT NULL
+    AND longitude IS NOT NULL
+    -- Find the range of latitude and longitude which fits between -+10KM (since 1 degree is ~ 111KM)
+    AND latitude  BETWEEN ${userLatitude}  - (${_radius} / 111.0)
+                       AND ${userLatitude}  + (${_radius} / 111.0)
+    -- Longitude is multiplied by cos of latitude to account for curvature which varies the distance by longitude. Like at equator it is 1 degree but at poles it becomes almost 0 degrees
+    AND longitude BETWEEN ${userLongitude} - (${_radius} / (111.0 * cos(radians(${userLatitude}))))
+                       AND ${userLongitude} + (${_radius} / (111.0 * cos(radians(${userLatitude}))))
+    HAVING distance_km <= ${_radius}
+    ORDER BY distance_km ASC
+    LIMIT ${_storeLimit}
+  `;
+
+  const nearbyStores = await Prisma.$queryRaw(nearbyStoresQuery);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, nearbyStores, "Nearby stores fetched"));
+});
 
 export {
   getAllStoresManaged,

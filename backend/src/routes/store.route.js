@@ -18,6 +18,6 @@ router.route("/updateStore/:id").patch(isLoggedIn, updateStoreDetails);
 
 router.route("/delete/:id").delete(isLoggedIn, deleteStore);
 
-router.route("/getNearbyStores").get(isLoggedIn, getNearbyStores);
+router.route("/getNearbyStores").post(isLoggedIn, getNearbyStores);
 
 export default router;

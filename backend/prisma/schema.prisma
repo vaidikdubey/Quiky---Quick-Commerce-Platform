@@ -161,6 +161,7 @@ model Store {
   notifications Notification[]
 
   @@unique([managerId, name, address, pincode])
+  @@index([latitude, longitude])
 }
 
 model Category {
