@@ -109,7 +109,10 @@ const updateStoreDetails = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Store is inactive/deleted");
 
   if (existingStore.managerId !== req.user.id)
-    throw new ApiError(403, "You are not authorized to update this course");
+    throw new ApiError(
+      403,
+      "You are not authorized to update this store details",
+    );
 
   let updatedStoreData = {};
 
@@ -140,7 +143,49 @@ const updateStoreDetails = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, updatedStore, "Store details updated"));
 });
 
-const deleteStore = asyncHandler(async (req, res) => {});
+const deleteStore = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const userId = req.user.id;
+
+  const existingStore = await db.store.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      isActive: true,
+      managerId: true,
+    },
+  });
+
+  if (existingStore.managerId !== userId)
+    throw new ApiError(403, "You are not authorized to delete this store");
+
+  if (!existingStore.isActive)
+    throw new ApiError(403, "This store is either inactive or deleted");
+
+  const deletedStore = await db.store.delete({
+    where: {
+      id,
+      managerId: userId,
+    },
+    select: {
+      name: true,
+      address: true,
+      latitude: true,
+      longitude: true,
+      pincode: true,
+      isActive: true,
+      createdAt: true,
+    },
+  });
+
+  if (!deletedStore) throw new ApiError(400, "Invalid store id");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, deletedStore, "Store deleted successfully"));
+});
 
 const getNearbyStores = asyncHandler(async (req, res) => {});
 
