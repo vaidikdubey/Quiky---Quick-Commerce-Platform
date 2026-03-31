@@ -1,5 +1,12 @@
 import { Router } from "express";
 import { isLoggedIn } from "../middlewares/auth.middleware";
+import {
+  deleteStore,
+  getAllStoresManaged,
+  getNearbyStores,
+  getStoreById,
+  updateStoreDetails,
+} from "../controllers/store.controllers.js";
 
 const router = Router();
 
