@@ -14,7 +14,7 @@ router.route("/getAll").get(isLoggedIn, getAllStoresManaged);
 
 router.route("/getStore/:id").get(isLoggedIn, getStoreById);
 
-router.route("/updateStore").patch(isLoggedIn, updateStoreDetails);
+router.route("/updateStore/:id").patch(isLoggedIn, updateStoreDetails);
 
 router.route("/delete").delete(isLoggedIn, deleteStore);
 
