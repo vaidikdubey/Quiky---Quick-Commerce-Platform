@@ -67,8 +67,8 @@ const storeRegisterValidator = () => {
       .notEmpty()
       .withMessage("Store address is required")
       .isLength({ min: 3 }),
-    body("latitude").optional().isLatLong().withMessage("Invalid latitude"),
-    body("longitude").optional().isLatLong().withMessage("Invalid longitude"),
+    body("latitude").optional().isFloat({min: -90, max: 90}).withMessage("Invalid latitude"),
+    body("longitude").optional().isFloat({min: -180, max: 180}).withMessage("Invalid longitude"),
     body("pincode")
       .trim()
       .notEmpty()
