@@ -189,8 +189,6 @@ const deleteStore = asyncHandler(async (req, res) => {
 });
 
 const getNearbyStores = asyncHandler(async (req, res) => {
-  const { id } = req.user;
-
   const { userLatitude, userLongitude, searchRadius, storeLimit } = req.body;
 
   //Default radius to search for stores
@@ -206,14 +204,23 @@ const getNearbyStores = asyncHandler(async (req, res) => {
     latitude,
     longitude,
     pincode,
-    -- Haversine formula to calculate distance of each store from user
-    (6371 * acos(
-      LEAST(1.0,
-        cos(radians(${userLatitude})) * cos(radians(latitude)) *
-        cos(radians(longitude) - radians(${userLongitude})) +
-        sin(radians(${userLatitude})) * sin(radians(latitude))
-      )
-    )) AS distance_km
+    distance_km
+    FROM (
+      SELECT
+        id,
+        name,
+        address,
+        latitude,
+        longitude,
+        pincode,
+      -- Haversine formula to calculate distance of each store from user
+        (6371 * acos(
+          LEAST(1.0,
+            cos(radians(${userLatitude})) * cos(radians(latitude)) *
+            cos(radians(longitude) - radians(${userLongitude})) +
+            sin(radians(${userLatitude})) * sin(radians(latitude))
+          )
+        )) AS distance_km
     FROM "Store"
     WHERE "isActive" = true
     AND latitude IS NOT NULL
@@ -224,12 +231,13 @@ const getNearbyStores = asyncHandler(async (req, res) => {
     -- Longitude is multiplied by cos of latitude to account for curvature which varies the distance by longitude. Like at equator it is 1 degree but at poles it becomes almost 0 degrees
     AND longitude BETWEEN ${userLongitude} - (${_radius} / (111.0 * cos(radians(${userLatitude}))))
                        AND ${userLongitude} + (${_radius} / (111.0 * cos(radians(${userLatitude}))))
-    HAVING distance_km <= ${_radius}
+    ) AS subquery
+    WHERE distance_km <= ${_radius}
     ORDER BY distance_km ASC
     LIMIT ${_storeLimit}
   `;
 
-  const nearbyStores = await Prisma.$queryRaw(nearbyStoresQuery);
+  const nearbyStores = await db.$queryRaw(nearbyStoresQuery);
 
   return res
     .status(200)
