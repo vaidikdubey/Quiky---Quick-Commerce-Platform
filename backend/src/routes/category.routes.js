@@ -18,3 +18,5 @@ router
 router
     .route("/delete/:id")
     .delete(isLoggedIn, checkAdmin, deleteCategory)
+
+export default router;

@@ -20,9 +20,11 @@ app.use(cookieParser());
 //import custom routes
 import authRouter from "./routes/auth.routes.js";
 import storeRouter from "./routes/store.route.js";
+import categoryRouter from "./routes/category.routes.js";
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/store", storeRouter);
+app.use("/api/v1/category", categoryRouter);
 
 // Any error thrown in routes above will end up here
 app.use(errorHandler);
