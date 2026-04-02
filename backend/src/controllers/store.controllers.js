@@ -20,15 +20,20 @@ const getAllStoresManaged = asyncHandler(async (req, res) => {
       pincode: true,
       isActive: true,
       products: {
-        name: true,
-        description: true,
-        price: true,
-        stock: true,
-        isAvailable: true,
+        select: {
+          name: true,
+          description: true,
+          price: true,
+          stock: true,
+          isAvailable: true,
+        },
       },
+      createdAt: true,
       _count: {
-        products: true,
-        orders: true,
+        select: {
+          products: true,
+          orders: true,
+        },
       },
     },
   });
@@ -56,28 +61,36 @@ const getStoreById = asyncHandler(async (req, res) => {
       isActive: true,
       createdAt: true,
       manager: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        createdAt: true,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          createdAt: true,
+        },
       },
       products: {
-        id: true,
-        name: true,
-        description: true,
-        price: true,
-        stock: true,
-        isAvailable: true,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          price: true,
+          stock: true,
+          isAvailable: true,
+        },
       },
       orders: {
-        id: true,
-        totalAmount: true,
-        status: true,
+        select: {
+          id: true,
+          totalAmount: true,
+          status: true,
+        },
       },
       _count: {
-        products: true,
-        orders: true,
+        select: {
+          products: true,
+          orders: true,
+        },
       },
     },
   });
