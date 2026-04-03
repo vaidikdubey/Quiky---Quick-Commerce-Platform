@@ -104,6 +104,39 @@ const updateCategory = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, updatedCategory, "Category updated"));
 });
 
-const deleteCategory = asyncHandler(async (req, res) => {});
+const deleteCategory = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const existingCategory = await db.category.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!existingCategory) throw new ApiError(404, "Category not found");
+
+  const deletedCategory = await db.category.delete({
+    where: {
+      id,
+    },
+    select: {
+      name: true,
+      slug: true,
+      createdAt: true,
+      updatedAt: true,
+      _count: {
+        select: {
+          products: true,
+        },
+      },
+    },
+  });
+
+  if (!deletedCategory) throw new ApiError(500, "Failed to delete category");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, deletedCategory, "Category deleted"));
+});
 
 export { getAllCategories, createCategory, updateCategory, deleteCategory };
