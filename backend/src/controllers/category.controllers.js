@@ -33,7 +33,7 @@ const getAllCategories = asyncHandler(async (req, res) => {
         },
       }),
     },
-    orderBy: { name: asc },
+    orderBy: { name: "asc" },
     take: parseInt(limit),
   });
 
@@ -73,6 +73,9 @@ const updateCategory = asyncHandler(async (req, res) => {
   if (!existingCategory) throw new ApiError(404, "Category not found");
 
   const { name, slug } = req.body;
+
+  if (!name && !slug)
+    throw new ApiError(400, "Please provide some details to update");
 
   const updatedData = {
     ...(name && { name }),

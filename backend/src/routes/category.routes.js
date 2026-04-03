@@ -9,7 +9,7 @@ import {
 
 const router = Router();
 
-router.route("/getAll").get(isLoggedIn, getAllCategories);
+router.route("/getAll").post(isLoggedIn, getAllCategories);
 
 router.route("/create").post(isLoggedIn, checkAdmin, createCategory);
 
