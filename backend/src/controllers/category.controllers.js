@@ -44,7 +44,22 @@ const getAllCategories = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, categories, "All categories fetched"));
 });
 
-const createCategory = asyncHandler(async (req, res) => {});
+const createCategory = asyncHandler(async (req, res) => {
+  const { name, slug } = req.body;
+
+  if (!name) throw new ApiError(400, "Category name is required");
+
+  const newCategory = await db.category.create({
+    data: {
+      name,
+      slug,
+    },
+  });
+
+  if (!newCategory) throw new ApiError(400, "Failed to create category");
+
+  res.status(200).json(new ApiResponse(200, newCategory, "Category created"));
+});
 
 const updateCategory = asyncHandler(async (req, res) => {});
 

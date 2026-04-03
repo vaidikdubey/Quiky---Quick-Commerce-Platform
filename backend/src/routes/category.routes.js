@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { checkAdmin, isLoggedIn } from "../middlewares/auth.middleware";
+import { checkAdmin, isLoggedIn } from "../middlewares/auth.middleware.js";
 import {
   createCategory,
   deleteCategory,
   getAllCategories,
   updateCategory,
-} from "../controllers/category.controllers";
+} from "../controllers/category.controllers.js";
 
 const router = Router();
 

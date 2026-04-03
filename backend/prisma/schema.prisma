@@ -20,38 +20,38 @@ enum UserRole {
   ADMIN
 }
 
-enum ProductCategory {
-  FRESH_VEGETABLES
-  FRESH_FRUITS
-  DAIRY
-  BREAD_EGGS
-  SNACKS_MUNCHIES
-  COLD_BEVERAGES
-  JUICES
-  INSTANT_FOODS
-  FROZEN_FOODS
-  READY_TO_COOK
-  TEA_COFFEE
-  HEALTH_DRINKS
-  BAKERY
-  BISCUITS_COOKIES
-  CHICKEN
-  MUTTON
-  FISH_SEAFOOD
-  EGGS
-  ATTA_FLOURS
-  RICE_PULSES
-  OILS_GHEE
-  SPICES_MASALAS
-  SWEETS_DESSERTS
-  CHOCOLATES
-  BEAUTY_PERSONAL_CARE
-  COSMETICS
-  BABY_PRODUCTS
-  PET_SUPPLIES
-  CLEANING_ESSENTIALS
-  HOUSEHOLD
-}
+// enum ProductCategory {
+//   FRESH_VEGETABLES
+//   FRESH_FRUITS
+//   DAIRY
+//   BREAD_EGGS
+//   SNACKS_MUNCHIES
+//   COLD_BEVERAGES
+//   JUICES
+//   INSTANT_FOODS
+//   FROZEN_FOODS
+//   READY_TO_COOK
+//   TEA_COFFEE
+//   HEALTH_DRINKS
+//   BAKERY
+//   BISCUITS_COOKIES
+//   CHICKEN
+//   MUTTON
+//   FISH_SEAFOOD
+//   EGGS
+//   ATTA_FLOURS
+//   RICE_PULSES
+//   OILS_GHEE
+//   SPICES_MASALAS
+//   SWEETS_DESSERTS
+//   CHOCOLATES
+//   BEAUTY_PERSONAL_CARE
+//   COSMETICS
+//   BABY_PRODUCTS
+//   PET_SUPPLIES
+//   CLEANING_ESSENTIALS
+//   HOUSEHOLD
+// }
 
 enum OrderStatus {
   PENDING
@@ -166,7 +166,7 @@ model Store {
 
 model Category {
   id        String          @id @default(uuid())
-  name      ProductCategory
+  name      String
   slug      String?         @unique
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
