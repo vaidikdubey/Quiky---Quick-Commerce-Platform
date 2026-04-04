@@ -124,3 +124,17 @@ export const checkAdmin = asyncHandler(async (req, res, next) => {
 
   return next();
 });
+
+export const checkPermission = (roles = []) =>
+  asyncHandler(async (req, res, next) => {
+    const user = req.user;
+
+    if (!user || !roles.includes(user.role)) {
+      throw new ApiError(
+        403,
+        "Access denied - You don't have access to this resource",
+      );
+    }
+
+    return next();
+  });
