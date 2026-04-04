@@ -1,5 +1,14 @@
 import { Router } from "express";
 import { isLoggedIn, checkPermission } from "../middlewares/auth.middleware.js";
+import {
+  createProduct,
+  deleteProduct,
+  getAllProducts,
+  getProductById,
+  getProductByName,
+  getProductsInNearbyStores,
+  updateProduct,
+} from "../controllers/product.controllers.js";
 
 const router = Router();
 
