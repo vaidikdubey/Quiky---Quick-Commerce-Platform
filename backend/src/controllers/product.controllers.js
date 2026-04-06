@@ -257,7 +257,42 @@ const createProduct = asyncHandler(async (req, res) => {
   res.status(201).json(new ApiResponse(201, newProduct, "New product created"));
 });
 
-const updateProduct = asyncHandler(async (req, res) => {});
+const updateProduct = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const { name, description, price, imageUrl, stock, isAvailable, categoryId } =
+    req.body;
+
+  const updateData = {};
+
+  if (name) updateData.name = name;
+  if (description) updateData.description = description;
+  if (price) updateData.price = price;
+  if (imageUrl) updateData.imageUrl = imageUrl;
+  if (stock) updateData.stock = stock;
+  if (isAvailable) updateData.isAvailable = isAvailable;
+  if (categoryId) updateData.categoryId = categoryId;
+
+  const updatedProduct = await db.product.update({
+    where: {
+      id,
+    },
+    data: updateData,
+    select: {
+      name: true,
+      description: true,
+      price: true,
+      imageUrl: true,
+      stock: true,
+      isAvailable: true,
+      categoryId: true,
+    },
+  });
+
+  if (!updatedProduct) throw new ApiError(500, "Error updating product");
+
+  res.status(200).json(new ApiResponse(200, updateProduct, "Product updated"));
+});
 
 const deleteProduct = asyncHandler(async (req, res) => {});
 
