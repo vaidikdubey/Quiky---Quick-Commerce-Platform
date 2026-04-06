@@ -337,7 +337,52 @@ const toggleProductAvailability = asyncHandler(async (req, res) => {
     );
 });
 
-const deleteProduct = asyncHandler(async (req, res) => {});
+const deleteProduct = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const userId = req.user.id;
+
+  const existingProduct = await db.product.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      store: {
+        select: {
+          managerId: true,
+        },
+      },
+    },
+  });
+
+  if (!existingProduct) throw new ApiError(404, "Product not found");
+  if (existingProduct.store.managerId !== userId)
+    throw new ApiError(
+      403,
+      "Unauthorized - You do not have permission to delete this product",
+    );
+
+  const deletedProduct = await db.product.delete({
+    where: {
+      id,
+    },
+    select: {
+      name: true,
+      description: true,
+      price: true,
+      imageUrl: true,
+      stock: true,
+      isAvailable: true,
+      categoryId: true,
+      storeId: true,
+      createdAt: true,
+    },
+  });
+
+  if (!deletedProduct) throw new ApiError(500, "Error deleting product");
+
+  res.status(200).json(new ApiResponse(200, deletedProduct, "Product deleted"));
+});
 
 export {
   getAllProducts,
