@@ -140,7 +140,71 @@ const getProductById = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, product, "Product found"));
 });
 
-const getProductByName = asyncHandler(async (req, res) => {});
+const getProductByName = asyncHandler(async (req, res) => {
+  const { productName } = req.body;
+
+  if (
+    !productName ||
+    typeof productName != "string" ||
+    productName.trim() === ""
+  )
+    throw new ApiError(400, "Invalid or missing product name");
+
+  const validName = productName.trim();
+
+  const productByName = await db.product.findMany({
+    where: {
+      //Filter by case-insensitive name, with product available and stock > 0 and store active
+      name: {
+        equals: validName,
+        mode: "insensitive", //Makes search case-insensitive
+      },
+      isAvailable: true,
+      stock: { gt: 0 },
+      store: {
+        is: {
+          isActive: true,
+        },
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      price: true,
+      imageUrl: true,
+      stock: true,
+      isAvailable: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+      store: {
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          latitude: true,
+          longitude: true,
+          pincode: true,
+        },
+      },
+    },
+    orderBy: {
+      price: "asc", //Show cheapest first
+    },
+  });
+
+  if (!productByName || productByName.length === 0)
+    return res
+      .status(200)
+      .json(new ApiResponse(200, [], "No products found with this name"));
+
+  res.status(200).json(new ApiResponse(200, productByName, "Products found"));
+});
 
 const getProductsInNearbyStores = asyncHandler(async (req, res) => {});
 

@@ -24,7 +24,7 @@ router.route("/getAll/:storeId").get(isLoggedIn, getAllProducts);
 router.route("/get/:id").get(isLoggedIn, getProductById);
 
 //Public route for anyone to search any product by it's name
-router.route("/search").get(getProductByName);
+router.route("/search").post(getProductByName);
 
 router.route("/nearby").get(isLoggedIn, getProductsInNearbyStores);
 
