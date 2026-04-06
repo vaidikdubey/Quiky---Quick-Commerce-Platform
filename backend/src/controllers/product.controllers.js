@@ -87,7 +87,58 @@ const getAllProducts = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, data, "Products found"));
 });
 
-const getProductById = asyncHandler(async (req, res) => {});
+const getProductById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) throw new ApiError(404, "Product id is required");
+
+  const product = await db.product.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      name: true,
+      description: true,
+      price: true,
+      imageUrl: true,
+      stock: true,
+      isAvailable: true,
+      category: {
+        select: {
+          name: true,
+          slug: true,
+          createdAt: true,
+        },
+      },
+      store: {
+        select: {
+          name: true,
+          address: true,
+          latitude: true,
+          longitude: true,
+          pincode: true,
+          isActive: true,
+          manager: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+          _count: {
+            orders: true,
+          },
+        },
+      },
+      _count: {
+        orderItems: true,
+      },
+    },
+  });
+
+  if (!product) throw new ApiError(404, "Product not found");
+
+  res.status(200).json(new ApiResponse(200, product, "Product found"));
+});
 
 const getProductByName = asyncHandler(async (req, res) => {});
 
