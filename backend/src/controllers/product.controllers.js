@@ -208,7 +208,54 @@ const getProductByName = asyncHandler(async (req, res) => {
 
 const getProductsInNearbyStores = asyncHandler(async (req, res) => {});
 
-const createProduct = asyncHandler(async (req, res) => {});
+const createProduct = asyncHandler(async (req, res) => {
+  const {
+    name,
+    description,
+    price,
+    imageUrl,
+    stock,
+    isAvailable,
+    categoryId,
+    storeId,
+  } = req.body;
+
+  if (!name || !price || !storeId)
+    throw new ApiError(
+      400,
+      "Missing required fields. Kindly provide all required fields",
+    );
+
+  const data = {};
+
+  data.name = name;
+  if (description) data.description = description;
+  data.price = price;
+  if (imageUrl) data.imageUrl = imageUrl;
+  if (stock) data.stock = stock;
+  if (isAvailable) data.isAvailable = isAvailable;
+  if (categoryId) data.categoryId = categoryId;
+  data.storeId = storeId;
+
+  const newProduct = await db.product.create({
+    data,
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      price: true,
+      imageUrl: true,
+      stock: true,
+      isAvailable: true,
+      categoryId: true,
+      storeId: true,
+    },
+  });
+
+  if (!newProduct) throw new ApiError(500, "Error creating new product");
+
+  res.status(201).json(new ApiResponse(201, newProduct, "New product created"));
+});
 
 const updateProduct = asyncHandler(async (req, res) => {});
 
