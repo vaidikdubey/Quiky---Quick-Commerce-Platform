@@ -1,7 +1,7 @@
 import { db } from "../db/db.js";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
-import { asyncHandler } from "../utils/async-handler";
+import { asyncHandler } from "../utils/async-handler.js";
 
 const getAllProducts = asyncHandler(async (req, res) => {
   const { storeId } = req.params;
@@ -29,8 +29,8 @@ const getAllProducts = asyncHandler(async (req, res) => {
       },
       _count: {
         select: {
-          products,
-          orders,
+          products: true,
+          orders: true,
         },
       },
     },
@@ -119,18 +119,24 @@ const getProductById = asyncHandler(async (req, res) => {
           pincode: true,
           isActive: true,
           manager: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
           },
           _count: {
-            orders: true,
+            select: {
+              orders: true,
+            },
           },
         },
       },
       _count: {
-        orderItems: true,
+        select: {
+          orderItems: true,
+        },
       },
     },
   });
@@ -230,9 +236,9 @@ const createProduct = asyncHandler(async (req, res) => {
 
   data.name = name;
   if (description) data.description = description;
-  data.price = price;
+  data.price = parseFloat(price);
   if (imageUrl) data.imageUrl = imageUrl;
-  if (stock) data.stock = stock;
+  if (stock) data.stock = +stock;
   if (isAvailable) data.isAvailable = isAvailable;
   if (categoryId) data.categoryId = categoryId;
   data.storeId = storeId;
@@ -267,9 +273,9 @@ const updateProduct = asyncHandler(async (req, res) => {
 
   if (name) updateData.name = name;
   if (description) updateData.description = description;
-  if (price) updateData.price = price;
+  if (price) updateData.price = parseFloat(price);
   if (imageUrl) updateData.imageUrl = imageUrl;
-  if (stock) updateData.stock = stock;
+  if (stock) updateData.stock = +stock;
   if (isAvailable) updateData.isAvailable = isAvailable;
   if (categoryId) updateData.categoryId = categoryId;
 
@@ -291,7 +297,7 @@ const updateProduct = asyncHandler(async (req, res) => {
 
   if (!updatedProduct) throw new ApiError(500, "Error updating product");
 
-  res.status(200).json(new ApiResponse(200, updateProduct, "Product updated"));
+  res.status(200).json(new ApiResponse(200, updatedProduct, "Product updated"));
 });
 
 const toggleProductAvailability = asyncHandler(async (req, res) => {
@@ -299,11 +305,11 @@ const toggleProductAvailability = asyncHandler(async (req, res) => {
 
   const { isAvailable } = req.body;
 
-  if (isAvailable !== true || isAvailable !== false)
-    throw new ApiError(
-      400,
-      "Invalid or missing required fields. Kindly provide all required fields",
-    );
+  // if (!isAvailable || typeof isAvailable !== "boolean")
+  //   throw new ApiError(
+  //     400,
+  //     "Invalid or missing required fields. Kindly provide all required fields",
+  //   );
 
   const updateProductAvailability = await db.product.update({
     where: {
@@ -355,12 +361,24 @@ const deleteProduct = asyncHandler(async (req, res) => {
     },
   });
 
+  const user = await db.user.findUnique({
+    where: {
+      id: userId,
+    },
+    select: {
+      role: true,
+    },
+  });
+
   if (!existingProduct) throw new ApiError(404, "Product not found");
-  if (existingProduct.store.managerId !== userId)
+  if (existingProduct.store.managerId !== userId && user.role !== "ADMIN") {
+    console.log("Condition: ", existingProduct.store.managerId !== userId);
+    console.log("Condition: ", user.role !== "ADMIN");
     throw new ApiError(
       403,
       "Unauthorized - You do not have permission to delete this product",
     );
+  }
 
   const deletedProduct = await db.product.delete({
     where: {
