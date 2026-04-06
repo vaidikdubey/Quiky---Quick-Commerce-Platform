@@ -7,6 +7,7 @@ import {
   getProductById,
   getProductByName,
   getProductsInNearbyStores,
+  toggleProductAvailability,
   updateProduct,
 } from "../controllers/product.controllers.js";
 
@@ -35,6 +36,10 @@ router
 router
   .route("/update/:id")
   .patch(isLoggedIn, checkPermission(permissions), updateProduct);
+
+router
+  .route("/toggleAvailability/:id")
+  .patch(isLoggedIn, checkPermission(permissions), toggleProductAvailability);
 
 router
   .route("/delete/:id")

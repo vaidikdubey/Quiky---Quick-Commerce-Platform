@@ -294,6 +294,49 @@ const updateProduct = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, updateProduct, "Product updated"));
 });
 
+const toggleProductAvailability = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const { isAvailable } = req.body;
+
+  if (isAvailable !== true || isAvailable !== false)
+    throw new ApiError(
+      400,
+      "Invalid or missing required fields. Kindly provide all required fields",
+    );
+
+  const updateProductAvailability = await db.product.update({
+    where: {
+      id,
+    },
+    data: {
+      isAvailable,
+    },
+    select: {
+      name: true,
+      description: true,
+      price: true,
+      imageUrl: true,
+      stock: true,
+      isAvailable: true,
+      categoryId: true,
+    },
+  });
+
+  if (!updateProductAvailability)
+    throw new ApiError(500, "Error updating product availability");
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        updateProductAvailability,
+        "Product availability updated",
+      ),
+    );
+});
+
 const deleteProduct = asyncHandler(async (req, res) => {});
 
 export {
@@ -303,5 +346,6 @@ export {
   getProductsInNearbyStores,
   createProduct,
   updateProduct,
+  toggleProductAvailability,
   deleteProduct,
 };
