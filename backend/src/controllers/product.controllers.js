@@ -219,6 +219,7 @@ const getProductsInNearbyStores = asyncHandler(async (req, res) => {
     userLongitude,
     radius = 10,
     limit = 15,
+    name,
     categoryId,
   } = req.body;
 
@@ -228,7 +229,7 @@ const getProductsInNearbyStores = asyncHandler(async (req, res) => {
   const _radius = parseFloat(radius);
   const _limit = parseInt(limit);
 
-  if (NaN(_radius) || _radius <= 0)
+  if (isNaN(_radius) || _radius <= 0)
     throw new ApiError(400, "Invalid radius value");
 
   //Find nearby active stores using Haversine formula
@@ -270,10 +271,10 @@ const getProductsInNearbyStores = asyncHandler(async (req, res) => {
     ) AS subquery
     WHERE distance_km <= ${_radius}
     ORDER BY distance_km ASC
-    LIMIT ${_storeLimit}
+    LIMIT ${_limit}
   `;
 
-  const nearbyStores = await Prisma.$queryRaw(nearbyStoreQuery);
+  const nearbyStores = await db.$queryRaw(nearbyStoreQuery);
 
   if (!nearbyStores || nearbyStores.length === 0)
     return res
@@ -288,6 +289,13 @@ const getProductsInNearbyStores = asyncHandler(async (req, res) => {
     isAvailable: true,
     stock: { gt: 0 },
   };
+
+  if (name) {
+    whereClause.name = {
+      equals: name,
+      mode: "insensitive", //Makes search case-insensitive
+    };
+  }
 
   if (categoryId) {
     whereClause.categoryId = categoryId;
@@ -318,7 +326,6 @@ const getProductsInNearbyStores = asyncHandler(async (req, res) => {
           latitude: true,
           longitude: true,
           pincode: true,
-          distance_km: false, // We'll add it manually
         },
       },
     },
