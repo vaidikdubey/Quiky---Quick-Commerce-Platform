@@ -1,4 +1,5 @@
 import { db } from "../db/db.js";
+import { Prisma } from "../generated/prisma/index.js";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { asyncHandler } from "../utils/async-handler.js";
@@ -212,7 +213,148 @@ const getProductByName = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, productByName, "Products found"));
 });
 
-const getProductsInNearbyStores = asyncHandler(async (req, res) => {});
+const getProductsInNearbyStores = asyncHandler(async (req, res) => {
+  const {
+    userLatitude,
+    userLongitude,
+    radius = 10,
+    limit = 15,
+    categoryId,
+  } = req.body;
+
+  if (!userLatitude || !userLongitude)
+    throw new ApiError(400, "User latitude and longitude are required");
+
+  const _radius = parseFloat(radius);
+  const _limit = parseInt(limit);
+
+  if (NaN(_radius) || _radius <= 0)
+    throw new ApiError(400, "Invalid radius value");
+
+  //Find nearby active stores using Haversine formula
+  const nearbyStoreQuery = Prisma.sql`
+  SELECT
+    id,
+    name,
+    address,
+    latitude,
+    longitude,
+    pincode,
+    distance_km
+    FROM (
+      SELECT
+        id,
+        name,
+        address,
+        latitude,
+        longitude,
+        pincode,
+      -- Haversine formula to calculate distance of each store from user
+        (6371 * acos(
+          LEAST(1.0,
+            cos(radians(${userLatitude})) * cos(radians(latitude)) *
+            cos(radians(longitude) - radians(${userLongitude})) +
+            sin(radians(${userLatitude})) * sin(radians(latitude))
+          )
+        )) AS distance_km
+    FROM "Store"
+    WHERE "isActive" = true
+    AND latitude IS NOT NULL
+    AND longitude IS NOT NULL
+    -- Find the range of latitude and longitude which fits between -+10KM (since 1 degree is ~ 111KM)
+    AND latitude  BETWEEN ${userLatitude}  - (${_radius} / 111.0)
+                       AND ${userLatitude}  + (${_radius} / 111.0)
+    -- Longitude is multiplied by cos of latitude to account for curvature which varies the distance by longitude. Like at equator it is 1 degree but at poles it becomes almost 0 degrees
+    AND longitude BETWEEN ${userLongitude} - (${_radius} / (111.0 * cos(radians(${userLatitude}))))
+                       AND ${userLongitude} + (${_radius} / (111.0 * cos(radians(${userLatitude}))))
+    ) AS subquery
+    WHERE distance_km <= ${_radius}
+    ORDER BY distance_km ASC
+    LIMIT ${_storeLimit}
+  `;
+
+  const nearbyStores = await Prisma.$queryRaw(nearbyStoreQuery);
+
+  if (!nearbyStores || nearbyStores.length === 0)
+    return res
+      .status(200)
+      .json(new ApiResponse(200, [], "No nearby stores found"));
+
+  const storeIds = nearbyStores.map((store) => store.id);
+
+  //Fetch available products from nearby stores
+  const whereClause = {
+    storeId: { in: storeIds },
+    isAvailable: true,
+    stock: { gt: 0 },
+  };
+
+  if (categoryId) {
+    whereClause.categoryId = categoryId;
+  }
+
+  const products = await db.product.findMany({
+    where: whereClause,
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      price: true,
+      imageUrl: true,
+      stock: true,
+      isAvailable: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+      store: {
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          latitude: true,
+          longitude: true,
+          pincode: true,
+          distance_km: false, // We'll add it manually
+        },
+      },
+    },
+    orderBy: [
+      { price: "asc" }, // Cheapest first
+      { stock: "desc" }, // Higher stock preferred
+    ],
+    take: _limit,
+  });
+
+  //Better response crafting with adding store distance in products
+  const storeDistanceMap = new Map(
+    nearbyStores.map((s) => [s.id, parseFloat(s.distance_km.toFixed(2))]),
+  );
+
+  const responseData = products.map((product) => ({
+    ...product,
+    store: {
+      ...product.store,
+      distance_km: storeDistanceMap.get(product.store.id) || null,
+    },
+  }));
+
+  //Sorting responses by distance and then price
+  responseData.sort((a, b) => {
+    const distA = a.store.distance_km || 999; //Default distance to 999 (like keeing infinite)
+    const distB = b.store.distance_km || 999;
+
+    if (distA !== distB) return distA - distB; //Sort based on distance first
+    return a.price - b.price; //If equal distance, sort based on price
+  });
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, responseData, "Nearby products found"));
+});
 
 const createProduct = asyncHandler(async (req, res) => {
   const {
