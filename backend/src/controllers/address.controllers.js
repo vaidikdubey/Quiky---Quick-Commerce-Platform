@@ -304,7 +304,45 @@ const setDefaultAddress = asyncHandler(async (req, res) => {
     );
 });
 
-const deleteAddress = asyncHandler(async (req, res) => {});
+const deleteAddress = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  const deletedAddress = await db.address.delete({
+    where: {
+      id,
+      userId,
+    },
+    select: {
+      id: true,
+      label: true,
+      fullAddress: true,
+      latitude: true,
+      longitude: true,
+      pincode: true,
+      city: true,
+      state: true,
+      landmark: true,
+      isDefault: true,
+      createdAt: true,
+      updatedAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+        },
+      },
+    },
+  });
+
+  if (!deletedAddress) throw new ApiError(500, "Error deleting address");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, deletedAddress, "Address deleted successfully"));
+});
 
 export {
   addNewAddress,
