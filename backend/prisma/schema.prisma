@@ -144,6 +144,7 @@ model Address {
   orders Order[]
 
   @@index([userId])
+  @@index([userId, isDefault])
   @@index([latitude, longitude])
 }
 
