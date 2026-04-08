@@ -140,7 +140,45 @@ const getAllAddresses = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, addresses, "Addresses fetched successfully"));
 });
 
-const getAddressById = asyncHandler(async (req, res) => {});
+const getAddressById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const address = await db.address.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      label: true,
+      fullAddress: true,
+      latitude: true,
+      longitude: true,
+      pincode: true,
+      city: true,
+      state: true,
+      landmark: true,
+      isDefault: true,
+      createdAt: true,
+      updatedAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+        },
+      },
+      _count: {
+        select: {
+          orders: true,
+        },
+      },
+    },
+  });
+
+  if (!address) throw new ApiError(404, "Address not found");
+
+  res.status(200).json(new ApiResponse(200, address, "Address found"));
+});
 
 const setDefaultAddress = asyncHandler(async (req, res) => {});
 
