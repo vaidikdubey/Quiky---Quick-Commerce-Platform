@@ -146,7 +146,80 @@ const getAllOrders = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, allOrders, "All orders fetched"));
 });
 
-const getOrderById = asyncHandler(async (req, res) => {});
+const getOrderById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) throw new ApiError(400, "Order ID is required");
+
+  const order = await db.order.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      id: true,
+      clientId: true,
+      storeId: true,
+      riderId: true,
+      totalAmount: true,
+      status: true,
+      paymentMethod: true,
+      paymentStatus: true,
+      deliveryAddress: true,
+      createdAt: true,
+      client: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+        },
+      },
+      store: {
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          pincode: true,
+          manager: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+      rider: {
+        select: {
+          id: true,
+          totalDeliveries: true,
+          rating: true,
+          createdAt: true,
+          user: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      delivery: {
+        select: {
+          status: true,
+          pickupTime: true,
+          deliveryTime: true,
+          estimatedTime: true,
+        },
+      },
+      _count: {
+        select: {
+          items: true,
+        },
+      },
+    },
+  });
+
+  if (!order) throw new ApiError(404, "Order not found");
+
+  res.status(200).json(new ApiResponse(200, order, "Order found"));
+});
 
 const updateOrderStatus = asyncHandler(async (req, res) => {});
 
