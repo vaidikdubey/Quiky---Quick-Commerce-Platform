@@ -3,6 +3,7 @@ import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import {
+    orderStatus,
   orderStatusArray,
   paymentMethodsArray,
   paymentStatusArray,
@@ -221,7 +222,78 @@ const getOrderById = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, order, "Order found"));
 });
 
-const updateOrderStatus = asyncHandler(async (req, res) => {});
+const updateOrderStatus = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!orderStatusArray.includes(status)) throw new ApiError(400, "Invalid order status");
+
+    const updatedOrder = await db.order.update({
+        where: {
+            id
+        },
+        data: {
+            status
+        },
+        select: {
+            totalAmount: true,
+            status: true,
+            paymentMethod: true,
+            paymentStatus: true,
+            deliveryAddress: true,
+            createdAt: true,
+            updatedAt: true,
+            client: {
+                select: {
+                    id: true,
+                    name: true,
+                    phone: true,
+                }
+            },
+            store: {
+                select: {
+                    id: true,
+                    name: true,
+                    address: true,
+                    latitude: true,
+                    longitude: true,
+                    manager: {
+                        id: true,
+                        name: true,
+                        phone: true,
+                    }
+                }
+            },
+            rider: { //Might be null, but since we are automating rider assignment we select this
+                select: {
+                    id: true,
+                    licenseNumber: true,
+                    currentLatitue: true,
+                    currentLongitude: true,
+                    lastLocationUpdate: true,
+                    totalDeliveries: true,
+                    rating: true,
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            phone: true,
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    if (status !== orderStatus.READY_FOR_PICKUP) return res.status(200).json(new ApiResponse(200, updatedOrder, "Order status updated"));
+    else {
+        const store = updatedOrder.store;
+        if (!store.latitude || !store.longitude) throw new ApiError(400, "Store location not available for rider assignment");
+
+        const deliveryAddress = updatedOrder.deliveryAddress;
+        
+    }
+});
 
 const cancelOrder = asyncHandler(async (req, res) => {});
 

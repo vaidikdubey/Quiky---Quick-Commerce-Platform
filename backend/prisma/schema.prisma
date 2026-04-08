@@ -118,10 +118,33 @@ model User {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
+  addresses     Address[]
   riderProfile  RiderProfile?
   managedStores Store[]
   clientOrders  Order[]
   notifications Notification[]
+}
+
+model Address {
+  id          String   @id @default(uuid())
+  userId      String
+  label       String? //e.g., "Home", "Office" etc.
+  fullAddress String
+  latitude    Float?
+  longitude   Float?
+  pincode     String
+  city        String?
+  state       String?
+  landmark    String?
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([userId])
+  @@index([latitude, longitude])
 }
 
 model RiderProfile {
@@ -131,6 +154,8 @@ model RiderProfile {
   currentLatitue     Float?
   currentLongitude   Float?
   lastLocationUpdate DateTime?
+  isAvailable        Boolean   @default(false)
+  currentOrderId     String?   @unique
   totalDeliveries    Int       @default(0)
   rating             Float     @default(5.0)
   createdAt          DateTime  @default(now())
@@ -165,11 +190,11 @@ model Store {
 }
 
 model Category {
-  id        String          @id @default(uuid())
+  id        String   @id @default(uuid())
   name      String
-  slug      String?         @unique
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  slug      String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   products Product[]
 }
@@ -202,7 +227,7 @@ model Order {
   status          OrderStatus   @default(PENDING)
   paymentMethod   PaymentMethod
   paymentStatus   PaymentStatus @default(PENDING)
-  deliveryAddress Json
+  deliveryAddress Address       @relation(fields: [addressId], references: [id])
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -213,6 +238,7 @@ model Order {
   items         OrderItem[]
   delivery      Delivery?
   notifications Notification[]
+  addressId     String
 }
 
 model OrderItem {
