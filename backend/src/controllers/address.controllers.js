@@ -56,7 +56,60 @@ const addNewAddress = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, newAddress, "Address added successfully"));
 });
 
-const updateAddress = asyncHandler(async (req, res) => {});
+const updateAddress = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const {
+    label,
+    fullAddress,
+    latitude,
+    longitude,
+    pincode,
+    city,
+    state,
+    landmark,
+    isDefault,
+  } = req.body;
+
+  const data = {};
+
+  if (label) data.label = label;
+  if (fullAddress) data.fullAddress = fullAddress;
+  if (latitude) data.latitude = latitude;
+  if (longitude) data.longitude = longitude;
+  if (pincode) data.pincode = pincode;
+  if (city) data.city = city;
+  if (state) data.state = state;
+  if (landmark) data.landmark = landmark;
+  if (isDefault) data.isDefault = isDefault;
+
+  const updatedAddresss = await db.address.update({
+    where: {
+      id,
+    },
+    data,
+    select: {
+      id: true,
+      label: true,
+      fullAddress: true,
+      pincode: true,
+      latitude: true,
+      longitude: true,
+      city: true,
+      state: true,
+      landmark: true,
+      isDefault: true,
+    },
+  });
+
+  if (!updatedAddresss) throw new ApiError(500, "Error updating address");
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, updatedAddresss, "Address updated successfully"),
+    );
+});
 
 const getAllAddresses = asyncHandler(async (req, res) => {});
 
