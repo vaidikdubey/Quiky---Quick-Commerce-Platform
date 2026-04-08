@@ -23,6 +23,7 @@ const addNewAddress = asyncHandler(async (req, res) => {
 
   const data = {};
 
+  data.userId = id;
   data.fullAddress = fullAddress;
   data.pincode = pincode;
   if (label) data.label = label;
@@ -111,7 +112,33 @@ const updateAddress = asyncHandler(async (req, res) => {
     );
 });
 
-const getAllAddresses = asyncHandler(async (req, res) => {});
+const getAllAddresses = asyncHandler(async (req, res) => {
+  const { id } = req.user;
+
+  const addresses = await db.address.findMany({
+    where: {
+      userId: id,
+    },
+    select: {
+      id: true,
+      label: true,
+      fullAddress: true,
+      latitude: true,
+      longitude: true,
+      pincode: true,
+      city: true,
+      state: true,
+      landmark: true,
+      isDefault: true,
+    },
+  });
+
+  if (!addresses) throw new ApiError(500, "Error fetching addresses");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, addresses, "Addresses fetched successfully"));
+});
 
 const getAddressById = asyncHandler(async (req, res) => {});
 
