@@ -169,8 +169,20 @@ const getAllOrders = asyncHandler(async (req, res) => {
       status: true,
       paymentMethod: true,
       paymentStatus: true,
-      deliveryAddress: true,
+      addressId: true,
       createdAt: true,
+      deliveryAddress: {
+        select: {
+          label: true,
+          fullAddress: true,
+          latitude: true,
+          longitude: true,
+          pincode: true,
+          city: true,
+          state: true,
+          landmark: true,
+        },
+      },
       client: {
         select: {
           id: true,
@@ -248,8 +260,20 @@ const getOrderById = asyncHandler(async (req, res) => {
       status: true,
       paymentMethod: true,
       paymentStatus: true,
-      deliveryAddress: true,
+      addressId: true,
       createdAt: true,
+      deliveryAddress: {
+        select: {
+          label: true,
+          fullAddress: true,
+          latitude: true,
+          longitude: true,
+          pincode: true,
+          city: true,
+          state: true,
+          landmark: true,
+        }
+      },
       client: {
         select: {
           id: true,
