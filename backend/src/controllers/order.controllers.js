@@ -528,7 +528,117 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
   );
 });
 
-const cancelOrder = asyncHandler(async (req, res) => {});
+const cancelOrder = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const orderDetails = await db.order.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      clientId: true,
+      storeId: true,
+      riderId: true,
+      totalAmount: true,
+      status: true,
+      paymentMethod: true,
+      paymentStatus: true,
+      addressId: true,
+      createdAt: true,
+    },
+  });
+
+  if (orderDetails.status !== "PENDING")
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          orderDetails,
+          "Order cannot be cancelled once it is accepted",
+        ),
+      );
+
+  const cancelledOrder = await db.order.updated({
+    where: {
+      id,
+    },
+    data: {
+      status: "CANCELLED",
+    },
+    select: {
+      clientId: true,
+      storeId: true,
+      riderId: true,
+      totalAmount: true,
+      status: true,
+      paymentMethod: true,
+      paymentStatus: true,
+      addressId: true,
+      createdAt: true,
+      updatedAt: true,
+      client: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+        },
+      },
+      store: {
+        select: {
+          name: true,
+          address: true,
+          latitude: true,
+          longitude: true,
+          pincode: true,
+          manager: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+        },
+      },
+      deliveryAddress: {
+        select: {
+          label: true,
+          fullAddress: true,
+          latitude: true,
+          longitude: true,
+          pincode: true,
+          city: true,
+          state: true,
+          landmark: true,
+          isDefault: true,
+          createdAt: true,
+          updatedAt: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+        },
+      },
+      _count: {
+        select: {
+          items: true,
+        },
+      },
+    },
+  });
+
+  if (!cancelledOrder) throw new ApiError(404, "Order not found");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, cancelledOrder, "Order cancelled successfully"));
+});
 
 const getAllOrdersForStore = asyncHandler(async (req, res) => {});
 
