@@ -1,4 +1,5 @@
 import { db } from "../db/db.js";
+import { Prisma } from "../generated/prisma/index.js";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
 import { asyncHandler } from "../utils/async-handler.js";
@@ -272,7 +273,7 @@ const getOrderById = asyncHandler(async (req, res) => {
           city: true,
           state: true,
           landmark: true,
-        }
+        },
       },
       client: {
         select: {
@@ -348,9 +349,21 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
       status: true,
       paymentMethod: true,
       paymentStatus: true,
-      deliveryAddress: true,
+      addressId: true,
       createdAt: true,
       updatedAt: true,
+      deliveryAddress: {
+        select: {
+          label: true,
+          fullAddress: true,
+          latitude: true,
+          longitude: true,
+          pincode: true,
+          city: true,
+          state: true,
+          landmark: true,
+        },
+      },
       client: {
         select: {
           id: true,
@@ -398,16 +411,121 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     return res
       .status(200)
       .json(new ApiResponse(200, updatedOrder, "Order status updated"));
-  else {
-    const store = updatedOrder.store;
-    if (!store.latitude || !store.longitude)
-      throw new ApiError(
-        400,
-        "Store location not available for rider assignment",
-      );
 
-    const deliveryAddress = updatedOrder.deliveryAddress;
+  const store = updatedOrder.store;
+
+  if (!store.latitude || !store.longitude)
+    throw new ApiError(
+      400,
+      "Store location not available for rider assignment",
+    );
+
+  const deliveryAddress = updatedOrder.deliveryAddress;
+
+  const customerLat = deliveryAddress?.latitude;
+  const customerLong = deliveryAddress?.latitude;
+
+  if (!customerLat || !customerLong)
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          ...updatedOrder,
+          note: "Customer co-ordinates missing. Manual rider assignment needed.",
+        },
+        "Order is ready for pickup - Rider assignment pending",
+      ),
+    );
+
+  //Find nearby avaliable riders (range: 8km)
+  const _radii = [5, 8, 12, 15, 20];
+
+  let bestRider = null;
+
+  for (const radius of _radii) {
+    const nearbyRidersQuery = Prisma.sql`
+            SELECT 
+                r.id,
+                r."currentLatitue" as latitude,
+                r."currentLongitude" as longitude,
+                r.rating,
+                r."totalDeliveries",
+                u.name as "riderName",
+                u.phone as "riderPhone",
+                (6371 * acos(
+                    LEAST(1.0,
+                        cos(radians(${store.latitude})) * cos(radians(r."currentLatitue")) *
+                        cos(radians(r."currentLongitude") - radians(${store.longitude})) +
+                        sin(radians(${store.latitude})) * sin(radians(r."currentLatitue"))
+                    )
+                )) AS distance_km
+            FROM "RiderProfile" r
+            JOIN "User" u ON r."userId" = u.id
+            WHERE r."isAvailable" = true
+              AND r."currentLatitue" IS NOT NULL
+              AND r."currentLongitude" IS NOT NULL
+              AND u."isActive" = true
+              -- Bounding box for performance
+              AND r."currentLatitue"
+                BETWEEN ${store.latitude} - (${radius} / 111.0)
+                AND ${store.latitude} + (${radius} / 111.0)
+              AND r."currentLongitude"
+                BETWEEN ${store.longitude} - (${radius} / (111.0 * cos(radians(${store.latitude}))))
+                AND ${store.longitude} + (${radius} / (111.0 * cos(radians(${store.latitude}))))
+            HAVING distance_km <= ${radius}
+            ORDER BY distance_km ASC, r.rating DESC
+            LIMIT 5
+        `;
+
+    const nearbyRiders = await db.$queryRaw(nearbyRidersQuery);
+
+    if (nearbyRiders && nearbyRiders.length > 0) {
+      bestRider = nearbyRiders[0];
+      break; // Found a rider → stop increasing radius
+    }
   }
+
+  // If still no rider found after trying all radii
+  if (!bestRider) {
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          ...updatedOrder,
+          note: "No rider available in your area right now.",
+        },
+        "Order is ready for pickup - No rider found",
+      ),
+    );
+  }
+
+  // Assign the best rider
+  const [orderWithRider] = await db.$transaction([
+    db.order.update({
+      where: { id },
+      data: { riderId: bestRider.id },
+    }),
+    db.RiderProfile.update({
+      where: { id: bestRider.id },
+      data: { isAvailable: false },
+    }),
+  ]);
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        ...updatedOrder,
+        assignedRider: {
+          id: bestRider.id,
+          name: bestRider.riderName,
+          phone: bestRider.riderPhone,
+          distanceFromStore: parseFloat(bestRider.distance_km.toFixed(2)),
+        },
+      },
+      `Rider ${bestRider.riderName} assigned successfully`,
+    ),
+  );
 });
 
 const cancelOrder = asyncHandler(async (req, res) => {});
