@@ -220,26 +220,26 @@ model Product {
 }
 
 model Order {
-  id              String        @id @default(uuid())
-  clientId        String
-  storeId         String
-  riderId         String
-  totalAmount     Float
-  status          OrderStatus   @default(PENDING)
-  paymentMethod   PaymentMethod
-  paymentStatus   PaymentStatus @default(PENDING)
-  deliveryAddress Address       @relation(fields: [addressId], references: [id])
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id            String        @id @default(uuid())
+  clientId      String
+  storeId       String
+  riderId       String?
+  totalAmount   Float
+  status        OrderStatus   @default(PENDING)
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus @default(PENDING)
+  addressId     String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  client User         @relation(fields: [clientId], references: [id])
-  store  Store        @relation(fields: [storeId], references: [id])
-  rider  RiderProfile @relation(fields: [riderId], references: [id])
+  client          User          @relation(fields: [clientId], references: [id])
+  store           Store         @relation(fields: [storeId], references: [id])
+  rider           RiderProfile? @relation(fields: [riderId], references: [id])
+  deliveryAddress Address       @relation(fields: [addressId], references: [id])
 
   items         OrderItem[]
   delivery      Delivery?
   notifications Notification[]
-  addressId     String
 }
 
 model OrderItem {
