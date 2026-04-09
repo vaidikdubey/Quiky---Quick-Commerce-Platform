@@ -640,7 +640,122 @@ const cancelOrder = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, cancelledOrder, "Order cancelled successfully"));
 });
 
-const getAllOrdersForStore = asyncHandler(async (req, res) => {});
+const getAllOrdersForStore = asyncHandler(async (req, res) => {
+  const { storeId } = req.params;
+  const { id } = req.user;
+
+  if (!storeId || !id)
+    throw new ApiError(400, "Store ID and user ID are required");
+
+  const store = await db.store.findUnique({
+    where: {
+      id: storeId,
+    },
+    select: {
+      managerId: true,
+    },
+  });
+
+  if (!store) throw new ApiError(404, "Store not found");
+
+  if (store.managerId !== id)
+    throw new ApiError(403, "You are not authorized to access this store");
+
+  const orders = await db.order.findMany({
+    where: {
+      storeId,
+    },
+    select: {
+      id: true,
+      clientId: true,
+      storeId: true,
+      riderId: true,
+      totalAmount: true,
+      status: true,
+      paymentMethod: true,
+      paymentStatus: true,
+      addressId: true,
+      createdAt: true,
+      updatedAt: true,
+      client: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+        },
+      },
+      store: {
+        select: {
+          name: true,
+          address: true,
+          latitude: true,
+          longitude: true,
+          pincode: true,
+          manager: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+        },
+      },
+      rider: {
+        select: {
+          id: true,
+          userId: true,
+          licenseNumber: true,
+          totalDeliveries: true,
+          rating: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+        },
+      },
+      deliveryAddress: {
+        select: {
+          label: true,
+          fullAddress: true,
+          latitude: true,
+          longitude: true,
+          pincode: true,
+          city: true,
+          state: true,
+          landmark: true,
+          isDefault: true,
+          createdAt: true,
+          updatedAt: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+            },
+          },
+        },
+      },
+      _count: {
+        select: {
+          items: true,
+        },
+      },
+    },
+  });
+
+  if (!orders) throw new ApiError(404, "Orders not found");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, orders, "Orders fetched successfully"));
+});
 
 export {
   createOrder,
