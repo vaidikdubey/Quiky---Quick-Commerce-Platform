@@ -372,13 +372,46 @@ const getDeliveryById = asyncHandler(async (req, res) => {
       },
     },
   });
-    
-    if (!delivery) throw new ApiError(404, "Delivery not found");
 
-    res.status(200).json(new ApiResponse(200, delivery, "Delivery fetched"));
+  if (!delivery) throw new ApiError(404, "Delivery not found");
+
+  res.status(200).json(new ApiResponse(200, delivery, "Delivery fetched"));
 });
 
-const updateLocation = asyncHandler(async (req, res) => {});
+const updateLocation = asyncHandler(async (req, res) => {
+  const { id } = req.user;
+
+  const { currentLatitue, currentLongitude } = req.body;
+
+  if (!currentLatitue || !currentLongitude)
+    throw new ApiError(
+      400,
+      "Current latitude and longitude are required to update location",
+    );
+
+  currentLatitue = parseFloat(currentLatitue);
+  currentLongitude = parseFloat(currentLongitude);
+
+  const updatedData = await db.riderProfile.update({
+    where: {
+      userId: id,
+    },
+    data: {
+      currentLatitue,
+      currentLongitude,
+      lastLocationUpdate: new Date(), //Current time, since this is the time when location is updated
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (updatedData.id) throw new ApiError(500, "Error updating location");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, updatedData, "Rider location updated"));
+});
 
 const trackDelivery = asyncHandler(async (req, res) => {});
 
