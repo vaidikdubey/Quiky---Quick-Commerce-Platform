@@ -227,7 +227,84 @@ const assignRider = asyncHandler(async (req, res) => {
 
 const updateStatus = asyncHandler(async (req, res) => {});
 
-const getAllDeliveries = asyncHandler(async (req, res) => {});
+const getAllDeliveries = asyncHandler(async (req, res) => {
+  const { id } = req.user;
+
+  if (!id) throw new ApiError(400, "User ID is required");
+
+  const allDeliveries = await db.delivery.findMany({
+    where: {
+      riderId: id,
+    },
+    select: {
+      id: true,
+      orderId: true,
+      riderId: true,
+      status: true,
+      pickupTime: true,
+      deliveryTime: true,
+      estimatedTime: true,
+      createdAt: true,
+      order: {
+        id: true,
+        totalAmount: true,
+        status: true,
+        paymentMethod: true,
+        paymentStatus: true,
+        client: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        store: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            manager: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+        rider: {
+          id: true,
+          licenseNumber: true,
+          totalDeliveries: true,
+          rating: true,
+          createdAt: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          _count: {
+            select: {
+              deliveredOrders: true,
+              riderDeliveries: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!allDeliveries) throw new ApiError(400, "Error finding all deliveries");
+
+  if (allDeliveries.length === 0)
+    return res
+      .status(200)
+      .json(new ApiResponse(200, [], "No deliveries found"));
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, allDeliveries, "All deliveries found"));
+});
 
 const getDeliveryById = asyncHandler(async (req, res) => {});
 
