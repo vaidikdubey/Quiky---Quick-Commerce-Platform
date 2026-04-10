@@ -507,7 +507,13 @@ const trackDelivery = asyncHandler(async (req, res) => {
 
   if (!delivery) throw new ApiError(404, "Delivery not found");
 
-  res.status(200).json(new ApiResponse(200, delivery, "Delivery fetched"));
+  const minutesAgo = Math.floor(Date.now() - delivery.rider.lastLocationUpdate);
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, { ...delivery, minutesAgo }, "Delivery fetched"),
+    );
 });
 
 export {
