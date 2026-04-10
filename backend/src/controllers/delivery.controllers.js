@@ -507,13 +507,85 @@ const trackDelivery = asyncHandler(async (req, res) => {
 
   if (!delivery) throw new ApiError(404, "Delivery not found");
 
-  const minutesAgo = Math.floor(Date.now() - delivery.rider.lastLocationUpdate);
+  let locationStatus = "LIVE";
+  let minutesAgo = 0;
+  let locationMessage = "";
+
+  const now = Date.now();
+  const lastUpdateTime = delivery.rider.lastLocationUpdate
+    ? new Date(delivery.rider.lastLocationUpdate).getTime()
+    : null;
+
+  if (
+    !lastUpdateTime ||
+    !delivery.rider.currentLatitue ||
+    !delivery.rider.currentLongitude
+  ) {
+    locationStatus = "UNKNOWN";
+    locationMessage = "Rider location is not available yet";
+  } else {
+    minutesAgo = Math.floor((now - lastUpdateTime) / 1000 / 60); //Convert to minutes
+
+    if (minutesAgo <= 2) {
+      ((locationStatus = "LIVE"),
+        (locationMessage = "Live • Updated just now"));
+    } else if (minutesAgo <= 5) {
+      locationStatus = "RECENT";
+      locationMessage = `Updated ${minutesAgo} minute${minutesAgo > 1 ? "s" : ""} ago`;
+    } else if (minutesAgo <= 15) {
+      locationStatus = "STALE";
+      locationMessage = `Updated ${minutesAgo} minutes ago • Rider may be in low-signal area`;
+    } else {
+      locationStatus = "VERY_STALE";
+      locationMessage =
+        "Location is quiet old. Rider might be offline or in a poor network area.";
+    }
+  }
+
+  const responseData = {
+    deliveryId: delivery.id,
+    orderId: delivery.orderId,
+    status: delivery.status,
+    estimatedTime: delivery.estimatedTime,
+    pickupTime: delivery.pickupTime,
+    deliveryTime: delivery.deliveryTime,
+
+    rider: {
+      id: delivery.rider.id,
+      name: delivery.rider.user.name,
+      phone: delivery.rider.user.phone,
+      rating: delivery.rider.rating,
+      totalDeliveries: delivery.rider.totalDeliveries,
+    },
+
+    riderLocation: {
+      latitude: delivery.rider.currentLatitue,
+      longitude: delivery.rider.currentLongitude,
+      lastUpdated: delivery.rider.lastLocationUpdate,
+      minutesAgo: minutesAgo,
+      status: locationStatus, // LIVE | RECENT | STALE | VERY_STALE | UNKNOWN
+      message: locationMessage,
+    },
+
+    order: {
+      totalAmount: delivery.order.totalAmount,
+      status: delivery.order.status,
+      paymentMethod: delivery.order.paymentMethod,
+      paymentStatus: delivery.order.paymentStatus,
+      client: delivery.order.client,
+      store: delivery.order.store,
+      deliveryAddress: delivery.order.deliveryAddress,
+    },
+
+    // Helpful flags for frontend
+    isRiderMoving:
+      delivery.status === "IN_TRANSIT" || delivery.status === "PICKED_UP",
+    canContactRider: true,
+  };
 
   res
     .status(200)
-    .json(
-      new ApiResponse(200, { ...delivery, minutesAgo }, "Delivery fetched"),
-    );
+    .json(new ApiResponse(200, responseData, "Delivery tracking data fetched"));
 });
 
 export {
