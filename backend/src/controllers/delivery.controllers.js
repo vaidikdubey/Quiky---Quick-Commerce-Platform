@@ -294,7 +294,7 @@ const getAllDeliveries = asyncHandler(async (req, res) => {
     },
   });
 
-  if (!allDeliveries) throw new ApiError(400, "Error finding all deliveries");
+  if (!allDeliveries) throw new ApiError(500, "Error finding all deliveries");
 
   if (allDeliveries.length === 0)
     return res
@@ -306,7 +306,77 @@ const getAllDeliveries = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, allDeliveries, "All deliveries found"));
 });
 
-const getDeliveryById = asyncHandler(async (req, res) => {});
+const getDeliveryById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) throw new ApiError(400, "Delivery ID is required");
+
+  const delivery = await db.delivery.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      orderId: true,
+      riderId: true,
+      status: true,
+      pickupTime: true,
+      deliveryTime: true,
+      estimatedTime: true,
+      createdAt: true,
+      updatedAt: true,
+      order: {
+        id: true,
+        totalAmount: true,
+        status: true,
+        paymentMethod: true,
+        paymentStatus: true,
+        client: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        store: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            manager: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+        rider: {
+          id: true,
+          licenseNumber: true,
+          totalDeliveries: true,
+          rating: true,
+          createdAt: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          _count: {
+            select: {
+              deliveredOrders: true,
+              riderDeliveries: true,
+            },
+          },
+        },
+      },
+    },
+  });
+    
+    if (!delivery) throw new ApiError(404, "Delivery not found");
+
+    res.status(200).json(new ApiResponse(200, delivery, "Delivery fetched"));
+});
 
 const updateLocation = asyncHandler(async (req, res) => {});
 
