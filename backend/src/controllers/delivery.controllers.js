@@ -413,7 +413,102 @@ const updateLocation = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, updatedData, "Rider location updated"));
 });
 
-const trackDelivery = asyncHandler(async (req, res) => {});
+const trackDelivery = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) throw new ApiError(400, "Deilvery ID is required to track delivery");
+
+  const delivery = await db.delivery.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      orderId: true,
+      riderId: true,
+      status: true,
+      pickupTime: true,
+      deliveryTime: true,
+      estimatedTime: true,
+      createdAt: true,
+      order: {
+        select: {
+          totalAmount: true,
+          status: true,
+          paymentMethod: true,
+          paymentStatus: true,
+          client: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+            },
+          },
+          store: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+              latitude: true,
+              longitude: true,
+              pincode: true,
+              manager: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          deliveryAddress: {
+            select: {
+              id: true,
+              label: true,
+              fullAddress: true,
+              latitude: true,
+              longitude: true,
+              pincode: true,
+              city: true,
+              state: true,
+              landmark: true,
+            },
+          },
+        },
+      },
+      rider: {
+        select: {
+          id: true,
+          licenseNumber: true,
+          currentLatitue: true,
+          currentLongitude: true,
+          lastLocationUpdate: true,
+          currentOrderId: true,
+          totalDeliveries: true,
+          rating: true,
+          createdAt: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+            },
+          },
+          _count: {
+            select: {
+              deliveredOrders: true,
+              riderDeliveries: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!delivery) throw new ApiError(404, "Delivery not found");
+
+  res.status(200).json(new ApiResponse(200, delivery, "Delivery fetched"));
+});
 
 export {
   assignRider,
