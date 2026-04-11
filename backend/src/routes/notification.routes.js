@@ -1,5 +1,11 @@
 import { Router } from "express";
 import { isLoggedIn } from "../middlewares/auth.middleware.js";
+import {
+  deleteNotification,
+  getAllNotifications,
+  getAllUnreadNotifications,
+  markNotificationRead,
+} from "../controllers/notification.controllers.js";
 
 const router = Router();
 
