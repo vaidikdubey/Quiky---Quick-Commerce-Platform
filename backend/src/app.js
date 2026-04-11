@@ -17,6 +17,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+//Test welcome route for backend
+app.get("/", (req, res) => {
+  res.send("Welcome to Quiky server🔥");
+});
+
 //import custom routes
 import authRouter from "./routes/auth.routes.js";
 import addressRouter from "./routes/address.routes.js";

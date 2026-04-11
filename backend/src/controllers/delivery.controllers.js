@@ -2,7 +2,12 @@ import { db } from "../db/db.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
-import { orderStatus } from "../utils/constants.js";
+import {
+  deliveryStatus,
+  deliveryStatusArray,
+  orderStatus,
+  paymentStatus,
+} from "../utils/constants.js";
 
 const assignRider = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
@@ -225,7 +230,179 @@ const assignRider = asyncHandler(async (req, res) => {
   );
 });
 
-const updateStatus = asyncHandler(async (req, res) => {});
+const updateStatus = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const riderId = req.user.id;
+
+  if (!id || !riderId) throw new ApiError(400, "All fields are required");
+
+  if (
+    !status ||
+    status === deliveryStatus.ASSIGNED ||
+    !deliveryStatusArray.includes(status)
+  )
+    throw new ApiError(400, "Invalid delivery status.");
+
+  const delivery = await db.delivery.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      id: true,
+      orderId: true,
+      riderId: true,
+      status: true,
+      pickupTime: true,
+      deliveryTime: true,
+      estimatedTime: true,
+      order: {
+        select: {
+          id: true,
+          clientId: true,
+          storeId: true,
+          status: true,
+          riderId: true,
+        },
+      },
+    },
+  });
+
+  if (!delivery) throw new ApiError(404, "Delivery not found");
+
+  if (delivery.riderId !== riderId && req.user.role !== "ADMIN")
+    throw new ApiError(
+      403,
+      "You are not authorized to update this delivery status",
+    );
+
+  //Edge cases. Preventing invalid states
+  if (
+    delivery.status === deliveryStatus.DELIVERED ||
+    delivery.status === deliveryStatus.FAILED
+  )
+    throw new ApiError(
+      400,
+      `Cannot update status. Order is already ${delivery.status}`,
+    );
+
+  if (
+    status === deliveryStatus.PICKED_UP &&
+    delivery.status !== deliveryStatus.ASSIGNED
+  )
+    throw new ApiError(
+      400,
+      "Delivery can be marked PICKED_UP when currently ASSIGNED",
+    );
+
+  if (
+    status === deliveryStatus.IN_TRANSIT &&
+    delivery.status !== deliveryStatus.PICKED_UP
+  )
+    throw new ApiError(
+      400,
+      "Delivery can be marked IN_TRANSIT after PICKED_UP",
+    );
+
+  //Atomic transaction since delivery status should have all or none update with rollback
+  const result = await db.$transaction(async (tx) => {
+    const now = new Date();
+
+    let updateData = {
+      status,
+    };
+
+    if (status === deliveryStatus.PICKED_UP) {
+      updateData.pickupTime = now;
+      await tx.order.update({
+        where: {
+          id: delivery.orderId,
+        },
+        data: {
+          status: orderStatus.OUT_FOR_DELIVERY,
+        },
+      });
+    }
+
+    if (status === deliveryStatus.DELIVERED) {
+      updateData.deliveryTime = now;
+      await tx.order.update({
+        where: {
+          id: delivery.orderId,
+        },
+        data: {
+          status: orderStatus.DELIVERED,
+          paymentStatus: paymentStatus.PAID,
+        },
+      });
+
+      //Mark rider as available again
+      await tx.riderProfile.update({
+        where: {
+          id: delivery.riderId,
+        },
+        data: {
+          isAvailable: true,
+          currentOrderId: null,
+        },
+      });
+    }
+
+    if (status === deliveryStatus.FAILED) {
+      //Marking rider available again, since order failed
+      await tx.riderProfile.update({
+        where: {
+          id: delivery.riderId,
+        },
+        data: {
+          isAvailable: true,
+          currentOrderId: null,
+        },
+      });
+
+      await tx.order.update({
+        where: {
+          id: delivery.orderId,
+        },
+        data: {
+          status: orderStatus.CANCELLED,
+        },
+      });
+    }
+
+    const updatedDelivery = await tx.delivery.update({
+      where: {
+        id,
+      },
+      data: updateData,
+      select: {
+        id: true,
+        status: true,
+        pickupTime: true,
+        deliveryTime: true,
+        estimatedTime: true,
+      },
+    });
+
+    return updatedDelivery;
+  });
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        deliveryId: result.id,
+        status: result.status,
+        pickupTime: result.pickupTime,
+        deliveryTime: result.deliveryTime,
+        estimatedTime: result.estimatedTime,
+        timeTaken: Math.abs(result?.estimatedTime - result?.deliveryTime),
+        message: `Delivery status updated to ${result.status}`,
+      },
+      "Delivery status updated",
+    ),
+  );
+});
 
 const getAllDeliveries = asyncHandler(async (req, res) => {
   const { id } = req.user;

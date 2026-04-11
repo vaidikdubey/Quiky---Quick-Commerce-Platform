@@ -14,7 +14,7 @@ export const orderStatus = {
   OUT_FOR_DELIVERY: "OUT_FOR_DELIVERY",
   DELIVERED: "DELIVERED",
   CANCELLED: "CANCELLED",
-}
+};
 
 export const orderStatusArray = Object.values(orderStatus);
 
@@ -22,15 +22,25 @@ export const paymentMethods = {
   COD: "COD",
   UPI: "UPI",
   CASH: "CASH",
-}
+};
 
 export const paymentMethodsArray = Object.values(paymentMethods);
 
-export const paymentStatus =  {
+export const paymentStatus = {
   PENDING: "PENDING",
   PAID: "PAID",
   FAILED: "FAILED",
   REFUNDED: "REFUNDED",
-}
+};
 
 export const paymentStatusArray = Object.values(paymentStatus);
+
+export const deliveryStatus = {
+  ASSIGNED: "ASSIGNED",
+  PICKED_UP: "PICKED_UP",
+  IN_TRANSIT: "IN_TRANSIT",
+  DELIVERED: "DELIVERED",
+  FAILED: "FAILED",
+};
+
+export const deliveryStatusArray = Object.values(deliveryStatus);

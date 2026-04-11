@@ -20,7 +20,7 @@ router
   .post(isLoggedIn, checkPermission(managerPermission), assignRider);
 
 router
-  .route("/status/:deliveryId")
+  .route("/status/:id")
   .patch(isLoggedIn, checkPermission(riderPermission), updateStatus);
 
 router
