@@ -30,6 +30,7 @@ import categoryRouter from "./routes/category.routes.js";
 import productRouter from "./routes/product.routes.js";
 import orderRouter from "./routes/order.routes.js";
 import deliveryRouter from "./routes/delivery.routes.js";
+import notificationRouter from "./routes/notification.routes.js";
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/address", addressRouter);
@@ -38,6 +39,7 @@ app.use("/api/v1/category", categoryRouter);
 app.use("/api/v1/product", productRouter);
 app.use("/api/v1/order", orderRouter);
 app.use("/api/v1/delivery", deliveryRouter);
+app.use("/api/v1/notification", notificationRouter);
 
 // Any error thrown in routes above will end up here
 app.use(errorHandler);
