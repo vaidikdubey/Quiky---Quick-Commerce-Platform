@@ -307,7 +307,101 @@ const markNotificationRead = asyncHandler(async (req, res) => {
     );
 });
 
-const deleteNotification = asyncHandler(async (req, res) => {});
+const deleteNotification = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) throw new ApiError(400, "Notification ID is required");
+
+  const deletedNotification = await db.notification.delete({
+    where: {
+      id,
+    },
+    select: {
+      id: true,
+      type: true,
+      title: true,
+      body: true,
+      data: true,
+      isRead: true,
+      readAt: true,
+      orderId: true,
+      storeId: true,
+      riderId: true,
+      createdAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      order: {
+        select: {
+          id: true,
+          clientId: true,
+          storeId: true,
+          riderId: true,
+          totalAmount: true,
+          status: true,
+          paymentMethod: true,
+          paymentStatus: true,
+          addressId: true,
+          client: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+      store: {
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          latitude: true,
+          longitude: true,
+          pincode: true,
+          isActive: true,
+          manager: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          _count: {
+            select: {
+              products: true,
+              orders: true,
+            },
+          },
+        },
+      },
+      rider: {
+        select: {
+          id: true,
+          userId: true,
+          licenseNumber: true,
+          totalDeliveries: true,
+          rating: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!deletedNotification) throw new ApiError(404, "Notification not found");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, deletedNotification, "Notification deleted"));
+});
 
 export {
   getAllNotifications,
