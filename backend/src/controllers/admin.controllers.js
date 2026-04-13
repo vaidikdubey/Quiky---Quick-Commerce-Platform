@@ -13,10 +13,31 @@ const getAllOrders = asyncHandler(async (req, res) => {});
 
 const toggleUserAccount = asyncHandler(async (req, res) => {});
 
+const getDashboardStats = asyncHandler(async (req, res) => {});
+
+const toggleStoreStatus = asyncHandler(async (req, res) => {});
+
+const toggleRiderStatus = asyncHandler(async (req, res) => {});
+
+const updateOrderStatusByAdmin = asyncHandler(async (req, res) => {});
+
+const getPlatformAnalytics = asyncHandler(async (req, res) => {});
+
+const deleteUser = asyncHandler(async (req, res) => {});
+
+const sendBroadcastNotification = asyncHandler(async (req, res) => {});
+
 export {
   getAllUsers,
   getAllStores,
   getAllRiders,
   getAllOrders,
   toggleUserAccount,
+  getDashboardStats,
+  toggleStoreStatus,
+  toggleRiderStatus,
+  updateOrderStatusByAdmin,
+  getPlatformAnalytics,
+  deleteUser,
+  sendBroadcastNotification,
 };
