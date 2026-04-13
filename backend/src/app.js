@@ -32,6 +32,7 @@ import orderRouter from "./routes/order.routes.js";
 import deliveryRouter from "./routes/delivery.routes.js";
 import notificationRouter from "./routes/notification.routes.js";
 import riderRouter from "./routes/rider.routes.js";
+import adminRouter from "./routes/admin.routes.js";
 
 app.use("/api/v1/auth", authRouter);
 app.use("/api/v1/address", addressRouter);
@@ -42,6 +43,7 @@ app.use("/api/v1/order", orderRouter);
 app.use("/api/v1/delivery", deliveryRouter);
 app.use("/api/v1/notification", notificationRouter);
 app.use("/api/v1/rider", riderRouter);
+app.use("/api/v1/admin", adminRouter);
 
 // Any error thrown in routes above will end up here
 app.use(errorHandler);
