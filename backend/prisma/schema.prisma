@@ -152,7 +152,7 @@ model RiderProfile {
   id                 String    @id @default(uuid())
   userId             String    @unique
   licenseNumber      String
-  currentLatitue     Float?
+  currentLatitude    Float?
   currentLongitude   Float?
   lastLocationUpdate DateTime?
   isAvailable        Boolean   @default(true)
