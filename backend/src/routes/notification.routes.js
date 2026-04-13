@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { isLoggedIn } from "../middlewares/auth.middleware.js";
 import {
+  createNotification,
   deleteNotification,
   getAllNotifications,
   getAllUnreadNotifications,
@@ -8,6 +9,8 @@ import {
 } from "../controllers/notification.controllers.js";
 
 const router = Router();
+
+router.route("/create").post(isLoggedIn, createNotification);
 
 router.route("/getAll").get(isLoggedIn, getAllNotifications);
 

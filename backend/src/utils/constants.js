@@ -44,3 +44,17 @@ export const deliveryStatus = {
 };
 
 export const deliveryStatusArray = Object.values(deliveryStatus);
+
+export const notificationType = {
+  ORDER_PLACED: "ORDER_PLACED",
+  ORDER_CONFIRMED: "ORDER_CONFIRMED",
+  ORDER_PREPARING: "ORDER_PREPARING",
+  ORDER_READY_FOR_PICKUP: "ORDER_READY_FOR_PICKUP",
+  ORDER_PICKED_UP: "ORDER_PICKED_UP",
+  ORDER_OUT_FOR_DELIVERY: "ORDER_OUT_FOR_DELIVERY",
+  ORDER_DELIVERED: "ORDER_DELIVERED",
+  ORDER_CANCELLED: "ORDER_CANCELLED",
+  DELIVERY_FAILED: "DELIVERY_FAILED",
+};
+
+export const notificationTypeArray = Object.values(notificationType);

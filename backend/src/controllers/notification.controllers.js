@@ -2,6 +2,48 @@ import { db } from "../db/db.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
+import { notificationTypeArray } from "../utils/constants.js";
+
+const createNotification = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const { type, title, body, data, orderId, storeId, riderId } = req.body;
+
+  if (!type || !title || !body || !orderId || !storeId)
+    throw new ApiError(400, "All fields are required");
+
+  if (!notificationTypeArray.includes(type))
+    throw new ApiError(400, "Invalid notification type");
+
+  const newNotifData = { userId, type, title, body, orderId, storeId };
+
+  if (data) newNotifData.data = data;
+  if (riderId) newNotifData.riderId = riderId;
+
+  const newNotification = await db.notification.create({
+    data: newNotifData,
+    select: {
+      id: true,
+      userId: true,
+      type: true,
+      title: true,
+      body: true,
+      data: true,
+      isRead: true,
+      readAt: true,
+      orderId: true,
+      storeId: true,
+      riderId: true,
+      createdAt: true,
+    },
+  });
+
+  if (!newNotification)
+    throw new ApiError(500, "Error creating new notification");
+
+  res
+    .status(201)
+    .json(new ApiResponse(201, newNotification, "Notification created"));
+});
 
 const getAllNotifications = asyncHandler(async (req, res) => {
   const { id } = req.user;
@@ -404,6 +446,7 @@ const deleteNotification = asyncHandler(async (req, res) => {
 });
 
 export {
+  createNotification,
   getAllNotifications,
   getAllUnreadNotifications,
   markNotificationRead,
