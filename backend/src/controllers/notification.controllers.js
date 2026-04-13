@@ -247,7 +247,7 @@ const getAllUnreadNotifications = asyncHandler(async (req, res) => {
 });
 
 const markNotificationRead = asyncHandler(async (req, res) => {
-  const { id } = req.user;
+  const { id } = req.params;
 
   if (!id) throw new ApiError(400, "Notification ID is required");
 
