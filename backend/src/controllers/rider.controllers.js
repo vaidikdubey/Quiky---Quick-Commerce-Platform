@@ -232,18 +232,34 @@ const getAllDeliveries = asyncHandler(async (req, res) => {
           phone: true,
         },
       },
+      deliveredOrders: {
+        select: {
+          id: true,
+          orderId: true,
+          status: true,
+          pickupTime: true,
+          deliveryTime: true,
+          estimatedTime: true,
+          createdAt: true,
+          updatedAt: true,
+          order: {
+            select: {
+              totalAmount: true,
+              status: true,
+              paymentMethod: true,
+              paymentStatus: true,
+            },
+          },
+          _count: {
+            items: true,
+          },
+        },
+      },
       _count: {
         select: {
           deliveredOrders: true,
           riderDeliveries: true,
           notifications: true,
-        },
-      },
-      unreadNotifications: {
-        _count: {
-          where: {
-            isRead: false,
-          },
         },
       },
     },
@@ -261,7 +277,72 @@ const getAllDeliveries = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, allDeliveries, "All deliveries fetched"));
 });
 
-const getDeliveryById = asyncHandler(async (req, res) => {});
+const getDeliveryById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) throw new ApiError(400, "Delivery ID is required");
+
+  const delivery = await db.riderProfile.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      id: true,
+      userId: true,
+      licenseNumber: true,
+      currentLatitude: true,
+      currentLongitude: true,
+      lastLocationUpdate: true,
+      isAvailable: true,
+      currentOrderId: true,
+      totalDeliveries: true,
+      rating: true,
+      createdAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+        },
+      },
+      deliveredOrders: {
+        select: {
+          id: true,
+          orderId: true,
+          status: true,
+          pickupTime: true,
+          deliveryTime: true,
+          estimatedTime: true,
+          createdAt: true,
+          updatedAt: true,
+          order: {
+            select: {
+              totalAmount: true,
+              status: true,
+              paymentMethod: true,
+              paymentStatus: true,
+            },
+          },
+          _count: {
+            items: true,
+          },
+        },
+      },
+      _count: {
+        select: {
+          deliveredOrders: true,
+          riderDeliveries: true,
+          notifications: true,
+        },
+      },
+    },
+  });
+
+  if (!delivery) throw new ApiError(500, "Error fetching delivery");
+
+  res.status(200).json(new ApiResponse(200, delivery, "Delivery fetched"));
+});
 
 const getRiderEarnings = asyncHandler(async (req, res) => {});
 
