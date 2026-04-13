@@ -180,7 +180,30 @@ const updateProfile = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, responseData, "Profile updated"));
 });
 
-const getRiderRating = asyncHandler(async (req, res) => {});
+const getRiderRating = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+
+  const rating = await db.riderProfile.findUnique({
+    where: {
+      userId,
+    },
+    select: {
+      rating: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  if (!rating) throw new ApiError(500, "Error fetching rating");
+
+  res.status(200).json(new ApiResponse(200, rating, "Rider rating fetched"));
+});
 
 const getAllDeliveries = asyncHandler(async (req, res) => {});
 
