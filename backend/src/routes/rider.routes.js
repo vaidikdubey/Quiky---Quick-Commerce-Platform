@@ -32,6 +32,6 @@ router
 
 router
   .route("/earnings")
-  .get(isLoggedIn, checkPermission(riderPermission), getRiderEarnings);
+  .post(isLoggedIn, checkPermission(riderPermission), getRiderEarnings);
 
 export default router;

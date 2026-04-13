@@ -2,6 +2,7 @@ import { db } from "../db/db.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
+import { orderStatus } from "../utils/constants.js";
 
 const getProfile = asyncHandler(async (req, res) => {
   const userId = req.user.id;
@@ -344,7 +345,124 @@ const getDeliveryById = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, delivery, "Delivery fetched"));
 });
 
-const getRiderEarnings = asyncHandler(async (req, res) => {});
+const getRiderEarnings = asyncHandler(async (req, res) => {
+  const riderId = req.user.id;
+
+  const { startDate, endDate, limit = 30 } = req.body;
+
+  let dateFilter = {};
+
+  if (startDate || endDate) {
+    dateFilter = {
+      createdAt: {
+        ...(startDate && { gte: new Date(startDate) }), //if start date then >= start date
+        ...(endDate && { lte: new Date(endDate) }), //if end date then <= end date
+      },
+    };
+  }
+
+  const earnings = await db.delivery.findMany({
+    where: {
+      riderId,
+      status: orderStatus.DELIVERED,
+      ...dateFilter,
+    },
+    select: {
+      id: true,
+      orderId: true,
+      pickupTime: true,
+      deliveryTime: true,
+      createdAt: true,
+      order: {
+        select: {
+          id: true,
+          totalAmount: true,
+          status: true,
+          paymentMethod: true,
+          paymentStatus: true,
+          client: {
+            select: {
+              name: true,
+            },
+          },
+          store: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+    take: parseInt(limit),
+  });
+
+  if (!earnings || earnings.length === 0)
+    return res.status(200).json(
+      new ApiResponse(
+        200,
+        {
+          totalEarnings: 0,
+          totalDeliveries: 0,
+          deliveries: [],
+        },
+        "No completed deliveries yet. Start delivering to earn!",
+      ),
+    );
+
+  // Calculate earnings (The commission logic can be adjust as per the business model)
+  // Current example: 15% of order value + fixed ₹30 per delivery (common in quick commerce)
+  const COMMISSION_RATE = 0.15; // 15%
+  const FIXED_PER_DELIVERY = 30; // ₹30 per successful delivery
+
+  let totalEarnings = 0;
+  let totalDeliveries = earnings.length;
+
+  const deliveriesWithEarnings = earnings.map((delivery) => {
+    const orderAmount = delivery.order.totalAmount || 0;
+    const commission = orderAmount * COMMISSION_RATE;
+    const earnings = Math.round(commission + FIXED_PER_DELIVERY); // Round to nearest rupee
+
+    totalEarnings += earnings;
+
+    return {
+      deliveryId: delivery.id,
+      orderId: delivery.order.id,
+      storeName: delivery.order.store.name,
+      customerName: delivery.order.client.name,
+      orderAmount: parseFloat(orderAmount.toFixed(2)),
+      commission,
+      fixedEarning: FIXED_PER_DELIVERY,
+      totalEarning: earnings,
+      deliveryTime: delivery.deliveryTime,
+      timeTaken: delivery.pickupTime
+        ? Math.round(
+            (new Date(delivery.deliveryTime) - new Date(delivery.pickupTime)) /
+              (1000 * 60),
+          ) + " mins"
+        : "N/A",
+      date: delivery.createdAt,
+    };
+  });
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        totalEarnings: parseFloat(totalEarnings.toFixed(2)),
+        totalDeliveries,
+        averageEarningPerDelivery: parseFloat(
+          (totalEarnings / totalDeliveries).toFixed(2),
+        ),
+        deliveries: deliveriesWithEarnings,
+        note: "Earnings include 15% commission on order value + ₹30 fixed per delivery",
+      },
+      "Rider earnings fetched successfully",
+    ),
+  );
+});
 
 export {
   getProfile,
