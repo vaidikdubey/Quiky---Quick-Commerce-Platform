@@ -8,6 +8,7 @@ import {
   orderStatus,
   paymentStatus,
 } from "../utils/constants.js";
+import { formatDuration, formatTimeDifference } from "../utils/timeUtils.js";
 
 const assignRider = asyncHandler(async (req, res) => {
   const { orderId } = req.params;
@@ -18,6 +19,7 @@ const assignRider = asyncHandler(async (req, res) => {
       id: orderId,
     },
     select: {
+      id: true,
       clientId: true,
       storeId: true,
       riderId: true,
@@ -292,7 +294,7 @@ const updateStatus = asyncHandler(async (req, res) => {
   )
     throw new ApiError(
       400,
-      "Delivery can be marked PICKED_UP when currently ASSIGNED",
+      "Delivery can be marked PICKED_UP when currently status is ASSIGNED",
     );
 
   if (
@@ -387,6 +389,24 @@ const updateStatus = asyncHandler(async (req, res) => {
     return updatedDelivery;
   });
 
+  //Calculate time taken
+  let timeTaken = "N/A";
+  let timeDifference = null;
+
+  if (result.deliveryTime && result.pickupTime) {
+    const actualMs =
+      new Date(result.deliveryTime) - new Date(result.pickupTime);
+    timeTaken = formatDuration(actualMs);
+
+    if (result.estimatedTime) {
+      const estimatedMs =
+        new Date(result.estimatedTime) - new Date(result.pickupTime);
+      const diffMs = actualMs - estimatedMs;
+
+      timeDifference = formatTimeDifference(diffMs);
+    }
+  }
+
   res.status(200).json(
     new ApiResponse(
       200,
@@ -396,7 +416,8 @@ const updateStatus = asyncHandler(async (req, res) => {
         pickupTime: result.pickupTime,
         deliveryTime: result.deliveryTime,
         estimatedTime: result.estimatedTime,
-        timeTaken: Math.abs(result?.estimatedTime - result?.deliveryTime),
+        timeTaken,
+        timeDifference,
         message: `Delivery status updated to ${result.status}`,
       },
       "Delivery status updated",
@@ -423,47 +444,51 @@ const getAllDeliveries = asyncHandler(async (req, res) => {
       estimatedTime: true,
       createdAt: true,
       order: {
-        id: true,
-        totalAmount: true,
-        status: true,
-        paymentMethod: true,
-        paymentStatus: true,
-        client: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        store: {
-          select: {
-            id: true,
-            name: true,
-            address: true,
-            manager: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
-        rider: {
+        select: {
           id: true,
-          licenseNumber: true,
-          totalDeliveries: true,
-          rating: true,
-          createdAt: true,
-          user: {
+          totalAmount: true,
+          status: true,
+          paymentMethod: true,
+          paymentStatus: true,
+          client: {
             select: {
               id: true,
               name: true,
             },
           },
-          _count: {
+          store: {
             select: {
-              deliveredOrders: true,
-              riderDeliveries: true,
+              id: true,
+              name: true,
+              address: true,
+              manager: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          rider: {
+            select: {
+              id: true,
+              licenseNumber: true,
+              totalDeliveries: true,
+              rating: true,
+              createdAt: true,
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              _count: {
+                select: {
+                  deliveredOrders: true,
+                  riderDeliveries: true,
+                },
+              },
             },
           },
         },
@@ -502,47 +527,51 @@ const getDeliveryById = asyncHandler(async (req, res) => {
       createdAt: true,
       updatedAt: true,
       order: {
-        id: true,
-        totalAmount: true,
-        status: true,
-        paymentMethod: true,
-        paymentStatus: true,
-        client: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        store: {
-          select: {
-            id: true,
-            name: true,
-            address: true,
-            manager: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
-        rider: {
+        select: {
           id: true,
-          licenseNumber: true,
-          totalDeliveries: true,
-          rating: true,
-          createdAt: true,
-          user: {
+          totalAmount: true,
+          status: true,
+          paymentMethod: true,
+          paymentStatus: true,
+          client: {
             select: {
               id: true,
               name: true,
             },
           },
-          _count: {
+          store: {
             select: {
-              deliveredOrders: true,
-              riderDeliveries: true,
+              id: true,
+              name: true,
+              address: true,
+              manager: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          rider: {
+            select: {
+              id: true,
+              licenseNumber: true,
+              totalDeliveries: true,
+              rating: true,
+              createdAt: true,
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+              _count: {
+                select: {
+                  deliveredOrders: true,
+                  riderDeliveries: true,
+                },
+              },
             },
           },
         },
@@ -566,24 +595,27 @@ const updateLocation = asyncHandler(async (req, res) => {
       "Current latitude and longitude are required to update location",
     );
 
-  currentLatitue = parseFloat(currentLatitue);
-  currentLongitude = parseFloat(currentLongitude);
+  const updatedLatitude = parseFloat(currentLatitue);
+  const updatedLongitude = parseFloat(currentLongitude);
 
   const updatedData = await db.riderProfile.update({
     where: {
       userId: id,
     },
     data: {
-      currentLatitue,
-      currentLongitude,
+      currentLatitue: updatedLatitude,
+      currentLongitude: updatedLongitude,
       lastLocationUpdate: new Date(), //Current time, since this is the time when location is updated
     },
     select: {
       id: true,
+      currentLatitue: true,
+      currentLongitude: true,
+      lastLocationUpdate: true,
     },
   });
 
-  if (updatedData.id) throw new ApiError(500, "Error updating location");
+  if (!updatedData.id) throw new ApiError(500, "Error updating location");
 
   res
     .status(200)

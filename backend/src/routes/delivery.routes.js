@@ -16,7 +16,7 @@ const riderPermission = ["RIDER", "ADMIN"];
 
 router
   .route("/assign/:orderId")
-  .post(isLoggedIn, checkPermission(managerPermission), assignRider);
+  .get(isLoggedIn, checkPermission(managerPermission), assignRider);
 
 router
   .route("/status/:id")
