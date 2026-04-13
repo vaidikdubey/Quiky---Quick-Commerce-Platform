@@ -205,7 +205,61 @@ const getRiderRating = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, rating, "Rider rating fetched"));
 });
 
-const getAllDeliveries = asyncHandler(async (req, res) => {});
+const getAllDeliveries = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+
+  const allDeliveries = await db.riderProfile.findMany({
+    where: {
+      userId,
+    },
+    select: {
+      id: true,
+      userId: true,
+      licenseNumber: true,
+      currentLatitude: true,
+      currentLongitude: true,
+      lastLocationUpdate: true,
+      isAvailable: true,
+      currentOrderId: true,
+      totalDeliveries: true,
+      rating: true,
+      createdAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+        },
+      },
+      _count: {
+        select: {
+          deliveredOrders: true,
+          riderDeliveries: true,
+          notifications: true,
+        },
+      },
+      unreadNotifications: {
+        _count: {
+          where: {
+            isRead: false,
+          },
+        },
+      },
+    },
+  });
+
+  if (!allDeliveries) throw new ApiError(500, "Error fetching deliveries");
+
+  if (allDeliveries.length === 0)
+    return res
+      .status(200)
+      .json(new ApiResponse(200, [], "No deliveries found"));
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, allDeliveries, "All deliveries fetched"));
+});
 
 const getDeliveryById = asyncHandler(async (req, res) => {});
 
