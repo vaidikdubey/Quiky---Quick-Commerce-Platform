@@ -155,7 +155,7 @@ model RiderProfile {
   currentLatitue     Float?
   currentLongitude   Float?
   lastLocationUpdate DateTime?
-  isAvailable        Boolean   @default(false)
+  isAvailable        Boolean   @default(true)
   currentOrderId     String?   @unique
   totalDeliveries    Int       @default(0)
   rating             Float     @default(5.0)

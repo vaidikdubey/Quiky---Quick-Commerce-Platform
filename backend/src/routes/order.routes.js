@@ -26,7 +26,7 @@ router
   .route("/updateStatus/:id")
   .patch(isLoggedIn, checkPermission(managerPermission), updateOrderStatus);
 
-router.route("/cancel/:id").post(isLoggedIn, cancelOrder);
+router.route("/cancel/:id").delete(isLoggedIn, cancelOrder);
 
 router
   .route("/storeOrders/:storeId")

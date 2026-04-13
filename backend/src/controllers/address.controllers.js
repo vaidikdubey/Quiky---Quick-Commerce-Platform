@@ -5,7 +5,7 @@ import { ApiResponse } from "../utils/api-response.js";
 import { asyncHandler } from "../utils/async-handler.js";
 
 const addNewAddress = asyncHandler(async (req, res) => {
-  const { id } = req.params;
+  const { id } = req.user;
 
   const {
     label,
@@ -109,6 +109,7 @@ const addNewAddress = asyncHandler(async (req, res) => {
 
 const updateAddress = asyncHandler(async (req, res) => {
   const { id } = req.params;
+  const userId = req.user.id;
 
   const {
     label,
@@ -128,11 +129,26 @@ const updateAddress = asyncHandler(async (req, res) => {
       "Both latitude and longitude must be provided together",
     );
 
+  //Ownership check
+  const addressExists = await db.address.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      userId: true,
+    },
+  });
+
+  if (!addressExists) throw new ApiError(404, "Address not found");
+  if (addressExists.userId !== userId)
+    throw new ApiError(403, "You can only update your own addresses");
+
   //If current address is marked default, unmark all other addresses
-  if (isDefault) {
+  if (isDefault === true) {
     await db.address.updateMany({
       where: {
-        id,
+        userId,
+        id: { not: id },
         isDefault: true,
       },
       data: {
@@ -143,15 +159,18 @@ const updateAddress = asyncHandler(async (req, res) => {
 
   const data = {};
 
-  if (label) data.label = label;
-  if (fullAddress) data.fullAddress = fullAddress;
-  if (latitude) data.latitude = parseFloat(latitude);
-  if (longitude) data.longitude = parseFloat(longitude);
-  if (pincode) data.pincode = pincode;
-  if (city) data.city = city;
-  if (state) data.state = state;
-  if (landmark) data.landmark = landmark;
-  if (isDefault) data.isDefault = Boolean(isDefault);
+  if (label !== undefined) data.label = label;
+  if (fullAddress !== undefined) data.fullAddress = fullAddress;
+  if (latitude !== undefined) data.latitude = parseFloat(latitude);
+  if (longitude !== undefined) data.longitude = parseFloat(longitude);
+  if (pincode !== undefined) data.pincode = pincode;
+  if (city !== undefined) data.city = city;
+  if (state !== undefined) data.state = state;
+  if (landmark !== undefined) data.landmark = landmark;
+  if (isDefault !== undefined) data.isDefault = Boolean(isDefault);
+
+  if (Object.keys(data).length === 0)
+    throw new ApiError(400, "No fields provided to update");
 
   const updatedAddresss = await db.address.update({
     where: {

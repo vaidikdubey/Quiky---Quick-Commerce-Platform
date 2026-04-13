@@ -41,7 +41,7 @@ const createOrder = asyncHandler(async (req, res) => {
   if (!paymentStatusArray.includes(paymentStatus))
     throw new ApiError(400, "Invalid payment status");
 
-  totalAmount = parseFloat(totalAmount);
+  const amount = parseFloat(totalAmount);
 
   let selectedAddress;
 
@@ -103,7 +103,7 @@ const createOrder = asyncHandler(async (req, res) => {
     data: {
       clientId,
       storeId,
-      totalAmount,
+      totalAmount: amount,
       status,
       paymentMethod,
       paymentStatus,
@@ -213,8 +213,10 @@ const getAllOrders = asyncHandler(async (req, res) => {
           rating: true,
           createdAt: true,
           user: {
-            id: true,
-            name: true,
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
       },
@@ -304,8 +306,10 @@ const getOrderById = asyncHandler(async (req, res) => {
           rating: true,
           createdAt: true,
           user: {
-            id: true,
-            name: true,
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
       },
@@ -379,9 +383,11 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
           latitude: true,
           longitude: true,
           manager: {
-            id: true,
-            name: true,
-            phone: true,
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+            },
           },
         },
       },
@@ -412,6 +418,17 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
       .status(200)
       .json(new ApiResponse(200, updatedOrder, "Order status updated"));
 
+  if (updatedOrder.rider)
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          { ...updatedOrder, note: "Rider already assigned to this order" },
+          `Order is ready for pickup - Rider ${updatedOrder.rider.user?.name || "already assigned"}`,
+        ),
+      );
+
   const store = updatedOrder.store;
 
   if (!store.latitude || !store.longitude)
@@ -423,7 +440,7 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
   const deliveryAddress = updatedOrder.deliveryAddress;
 
   const customerLat = deliveryAddress?.latitude;
-  const customerLong = deliveryAddress?.latitude;
+  const customerLong = deliveryAddress?.longitude;
 
   if (!customerLat || !customerLong)
     return res.status(200).json(
@@ -444,42 +461,44 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
 
   for (const radius of _radii) {
     const nearbyRidersQuery = Prisma.sql`
-            SELECT 
-                r.id,
-                r."currentLatitue" as latitude,
-                r."currentLongitude" as longitude,
-                r.rating,
-                r."totalDeliveries",
-                u.name as "riderName",
-                u.phone as "riderPhone",
-                (6371 * acos(
-                    LEAST(1.0,
-                        cos(radians(${store.latitude})) * cos(radians(r."currentLatitue")) *
-                        cos(radians(r."currentLongitude") - radians(${store.longitude})) +
-                        sin(radians(${store.latitude})) * sin(radians(r."currentLatitue"))
-                    )
-                )) AS distance_km
-            FROM "RiderProfile" r
-            JOIN "User" u ON r."userId" = u.id
-            WHERE r."isAvailable" = true
-              AND r."currentLatitue" IS NOT NULL
-              AND r."currentLongitude" IS NOT NULL
-              AND u."isActive" = true
-              -- Bounding box for performance
-              AND r."currentLatitue"
-                BETWEEN ${store.latitude} - (${radius} / 111.0)
-                AND ${store.latitude} + (${radius} / 111.0)
-              AND r."currentLongitude"
-                BETWEEN ${store.longitude} - (${radius} / (111.0 * cos(radians(${store.latitude}))))
-                AND ${store.longitude} + (${radius} / (111.0 * cos(radians(${store.latitude}))))
-            HAVING distance_km <= ${radius}
-            ORDER BY distance_km ASC, r.rating DESC
-            LIMIT 5
+      WITH rider_distances AS (
+        SELECT 
+          r.id,
+          r."currentLatitue" as latitude,
+          r."currentLongitude" as longitude,
+          r.rating,
+          r."totalDeliveries",
+          u.name as "riderName",
+          u.phone as "riderPhone",
+          (6371 * acos(
+            LEAST(1.0,
+              cos(radians(${store.latitude})) * cos(radians(r."currentLatitue")) *
+              cos(radians(r."currentLongitude") - radians(${store.longitude})) +
+              sin(radians(${store.latitude})) * sin(radians(r."currentLatitue"))
+            )
+          )) AS distance_km
+      FROM "RiderProfile" r
+      JOIN "User" u ON r."userId" = u.id
+      WHERE r."isAvailable" = true
+        AND r."currentLatitue" IS NOT NULL
+        AND r."currentLongitude" IS NOT NULL
+        AND u."isActive" = true
+        -- Bounding box for performance (fast filter)
+        AND r."currentLatitue" BETWEEN ${store.latitude} - (${radius} / 111.0)
+                                 AND ${store.latitude} + (${radius} / 111.0)
+        AND r."currentLongitude" BETWEEN ${store.longitude} - (${radius} / (111.0 * cos(radians(${store.latitude}))))
+                                 AND ${store.longitude} + (${radius} / (111.0 * cos(radians(${store.latitude}))))
+    )
+    SELECT *
+    FROM rider_distances
+    WHERE distance_km <= ${radius}
+    ORDER BY distance_km ASC, rating DESC
+    LIMIT 5;
         `;
 
     const nearbyRiders = await db.$queryRaw(nearbyRidersQuery);
 
-    if (nearbyRiders && nearbyRiders.length > 0) {
+    if (nearbyRiders?.length > 0) {
       bestRider = nearbyRiders[0];
       break; // Found a rider → stop increasing radius
     }
@@ -500,7 +519,7 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
   }
 
   // Assign the best rider
-  const [orderWithRider] = await db.$transaction([
+  await db.$transaction([
     db.order.update({
       where: { id },
       data: { riderId: bestRider.id },
@@ -521,9 +540,10 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
           name: bestRider.riderName,
           phone: bestRider.riderPhone,
           distanceFromStore: parseFloat(bestRider.distance_km.toFixed(2)),
+          rating: bestRider.rating,
         },
       },
-      `Rider ${bestRider.riderName} assigned successfully`,
+      `Rider ${bestRider.riderName} assigned successfully (~${bestRider.distance_km.toFixed(1)} km away)`,
     ),
   );
 });
@@ -559,7 +579,7 @@ const cancelOrder = asyncHandler(async (req, res) => {
         ),
       );
 
-  const cancelledOrder = await db.order.updated({
+  const cancelledOrder = await db.order.update({
     where: {
       id,
     },
@@ -658,7 +678,7 @@ const getAllOrdersForStore = asyncHandler(async (req, res) => {
 
   if (!store) throw new ApiError(404, "Store not found");
 
-  if (store.managerId !== id)
+  if (store.managerId !== id && req.user.role !== "ADMIN")
     throw new ApiError(403, "You are not authorized to access this store");
 
   const orders = await db.order.findMany({

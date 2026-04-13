@@ -11,7 +11,6 @@ import {
 
 const router = Router();
 
-const clientPermission = ["CLIENT", "ADMIN"];
 const managerPermission = ["STORE_MANAGER", "ADMIN"];
 const riderPermission = ["RIDER", "ADMIN"];
 
