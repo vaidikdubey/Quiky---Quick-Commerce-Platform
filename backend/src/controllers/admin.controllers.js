@@ -611,7 +611,135 @@ const updateOrderStatusByAdmin = asyncHandler(async (req, res) => {
     );
 });
 
-const getPlatformAnalytics = asyncHandler(async (req, res) => {});
+const getPlatformAnalytics = asyncHandler(async (req, res) => {
+  const { days = 30 } = req.query;
+  // Calculate daysAgo (30 days by default)
+  const daysAgo = new Date(Date.now() - parseInt(days) * 24 * 60 * 60 * 1000);
+
+  const [
+    totalOrders,
+    totalRevenue,
+    totalUsers,
+    totalStores,
+    activeStores,
+    totalRiders,
+    activeRiders,
+    avgOrderValue,
+    ordersByStatus,
+    topStores,
+  ] = await Promise.all([
+    db.order.count({
+      where: {
+        createdAt: {
+          gte: daysAgo,
+        },
+      },
+    }),
+    db.order.aggregate({
+      where: {
+        createdAt: {
+          gte: daysAgo,
+        },
+        paymentStatus: paymentStatus.PAID,
+      },
+      _sum: {
+        totalAmount: true,
+      },
+    }),
+    db.user.count(),
+    db.store.count(),
+    db.store.count({
+      where: {
+        isActive: true,
+      },
+    }),
+    db.riderProfile.count(),
+    db.riderProfile.count({
+      where: {
+        isAvailable: true,
+      },
+    }),
+    db.order.aggregate({
+      where: {
+        createdAt: {
+          gte: daysAgo,
+        },
+      },
+      _avg: {
+        totalAmount: true,
+      },
+    }),
+    db.order.groupBy({
+      by: ["status"],
+      where: {
+        createdAt: {
+          gte: daysAgo,
+        },
+      },
+      _count: {
+        id: true,
+      },
+    }),
+    db.order.groupBy({
+      by: ["storeId"],
+      where: {
+        createdAt: {
+          gte: daysAgo,
+        },
+      },
+      _sum: {
+        totalAmount: true,
+      },
+      _count: {
+        id: true,
+      },
+      orderBy: {
+        _sum: {
+          totalAmount: "desc",
+        },
+      },
+      take: 5,
+    }),
+  ]);
+
+  // Get store names for top stores
+  const storeIds = topStores.map((s) => s.storeId);
+  const stores = await db.store.findMany({
+    where: {
+      id: {
+        in: storeIds,
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+    },
+  });
+
+  const topStoresWithName = topStores.map((ts) => ({
+    ...ts,
+    storeName: stores.find((s) => s.id === ts.storeId)?.name || "Unknown",
+  }));
+
+  const analytics = {
+    period: `${days} days`,
+    totalOrders,
+    totalRevenue: parseFloat(totalRevenue._sum.totalAmount || 0).toFixed(2),
+    totalUsers,
+    totalStores,
+    activeStores,
+    totalRiders,
+    activeRiders,
+    averageOrderValue: parseFloat(avgOrderValue._avg.totalAmount || 0).toFixed(2),
+    ordersByStatus,
+    topPerformingStores: topStoresWithName,
+    growthNote: "Data based on last " + days + " days",
+  };
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, analytics, "Platform analytics fetched"));
+});
 
 const deleteUser = asyncHandler(async (req, res) => {});
 
