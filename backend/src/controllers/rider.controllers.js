@@ -38,13 +38,13 @@ const getProfile = asyncHandler(async (req, res) => {
           notifications: true,
         },
       },
-      unreadNotifications: {
-        _count: {
-          where: {
-            isRead: false,
-          },
-        },
-      },
+    },
+  });
+
+  const unreadNotifications = await db.notification.count({
+    where: {
+      userId,
+      isRead: false,
     },
   });
 
@@ -57,7 +57,7 @@ const getProfile = asyncHandler(async (req, res) => {
       licenseNumber: profile.licenseNumber,
       currentLatitude: profile.currentLatitude,
       currentLongitude: profile.currentLongitude,
-      lastLocationUpda: profile.lastLocationUpda,
+      lastLocationUpda: profile.lastLocationUpdate,
       isAvailable: profile.isAvailable,
       currentOrderId: profile.currentOrderId,
       totalDeliveries: profile.totalDeliveries,
@@ -74,7 +74,7 @@ const getProfile = asyncHandler(async (req, res) => {
       deliveredOrders: profile._count.deliveredOrders,
       riderDeliveries: profile._count.riderDeliveries,
       totalNotifications: profile._count.notifications,
-      unreadNotifications: profile.unreadNotifications._count,
+      unreadNotifications,
     },
   };
 
@@ -131,20 +131,6 @@ const updateProfile = asyncHandler(async (req, res) => {
           phone: true,
         },
       },
-      _count: {
-        select: {
-          deliveredOrders: true,
-          riderDeliveries: true,
-          notifications: true,
-        },
-      },
-      unreadNotifications: {
-        _count: {
-          where: {
-            isRead: false,
-          },
-        },
-      },
     },
   });
 
@@ -170,19 +156,13 @@ const updateProfile = asyncHandler(async (req, res) => {
       email: updatedProfile.user.email,
       phone: updatedProfile.user.phone,
     },
-    count: {
-      deliveredOrders: updatedProfile._count.deliveredOrders,
-      riderDeliveries: updatedProfile._count.riderDeliveries,
-      totalNotifications: updatedProfile._count.notifications,
-      unreadNotifications: updatedProfile.unreadNotifications._count,
-    },
   };
 
   res.status(200).json(new ApiResponse(200, responseData, "Profile updated"));
 });
 
 const getRiderRating = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
+  const userId = req.params;
 
   const rating = await db.riderProfile.findUnique({
     where: {
@@ -204,6 +184,74 @@ const getRiderRating = asyncHandler(async (req, res) => {
   if (!rating) throw new ApiError(500, "Error fetching rating");
 
   res.status(200).json(new ApiResponse(200, rating, "Rider rating fetched"));
+});
+
+const updateRiderRating = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) throw new ApiError(400, "Rider ID is required");
+
+  const { rating } = req.body;
+
+  if (!rating) throw new ApiError(400, "Rating is required");
+
+  if (rating < 0 || rating > 5)
+    throw new ApiError(400, "Rating must be between 0 and 5");
+
+  const rider = await db.riderProfile.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      totalDeliveries: true,
+      rating: true,
+    },
+  });
+
+  const oldCount = rider.totalDeliveries;
+  const oldRating = rider.rating;
+
+  let newRating;
+  let newCount;
+
+  //First delivery
+  if (oldCount === 0) {
+    newRating = parseFloat(rating);
+    newCount = 1;
+  } else {
+    const oldSum = oldRating * oldCount;
+    const newSum = oldSum + parseFloat(rating);
+    newCount = oldCount + 1;
+    newRating = newSum / newCount;
+  }
+
+  const updatedRider = await db.riderProfile.update({
+    where: {
+      id,
+    },
+    data: {
+      rating: parseFloat(newRating.toFixed(2)),
+      totalDeliveries: newCount,
+    },
+    select: {
+      id: true,
+      userId: true,
+      licenseNumber: true,
+      totalDeliveries: true,
+      rating: true,
+      createdAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!updatedRider) throw new ApiError(500, "Error updating rating");
+
+  res.status(200).json(new ApiResponse(200, updatedRider, "Rating updated"));
 });
 
 const getAllDeliveries = asyncHandler(async (req, res) => {
@@ -468,6 +516,7 @@ export {
   getProfile,
   updateProfile,
   getRiderRating,
+  updateRiderRating,
   getAllDeliveries,
   getDeliveryById,
   getRiderEarnings,

@@ -7,11 +7,13 @@ import {
   getRiderEarnings,
   getRiderRating,
   updateProfile,
+  updateRiderRating,
 } from "../controllers/rider.controllers.js";
 
 const router = Router();
 
 const riderPermission = ["RIDER", "ADMIN"];
+const clientPermission = ["CLIENT", "ADMIN"];
 
 router
   .route("/profile")
@@ -21,6 +23,10 @@ router
 router
   .route("/rating")
   .get(isLoggedIn, checkPermission(riderPermission), getRiderRating);
+
+router
+  .route("/setRating/:id")
+  .patch(isLoggedIn, checkPermission(clientPermission), updateRiderRating);
 
 router
   .route("/allDeliveries")
