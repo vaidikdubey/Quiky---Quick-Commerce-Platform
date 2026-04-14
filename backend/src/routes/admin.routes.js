@@ -26,20 +26,20 @@ router.route("/riders").get(isLoggedIn, checkAdmin, getAllRiders);
 router.route("/orders").get(isLoggedIn, checkAdmin, getAllOrders);
 
 router
-  .route("/users/:id/status")
+  .route("/users/status/:id")
   .patch(isLoggedIn, checkAdmin, toggleUserAccount);
 
 router.route("/stats").get(isLoggedIn, checkAdmin, getDashboardStats); // alias
 
 router
-  .route("/stores/:id/status")
+  .route("/stores/status/:id")
   .patch(isLoggedIn, checkAdmin, toggleStoreStatus);
 router
-  .route("/riders/:id/status")
+  .route("/riders/status/:id")
   .patch(isLoggedIn, checkAdmin, toggleRiderStatus);
 
 router
-  .route("/orders/:id/status")
+  .route("/orders/status/:id")
   .patch(isLoggedIn, checkAdmin, updateOrderStatusByAdmin);
 
 router.route("/analytics").get(isLoggedIn, checkAdmin, getPlatformAnalytics);

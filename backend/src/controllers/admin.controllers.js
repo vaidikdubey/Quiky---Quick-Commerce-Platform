@@ -426,7 +426,56 @@ const toggleStoreStatus = asyncHandler(async (req, res) => {
     );
 });
 
-const toggleRiderStatus = asyncHandler(async (req, res) => {});
+const toggleRiderStatus = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { isAvailable } = req.body;
+
+  if (!id) throw new ApiError(400, "Rider ID is required");
+
+  const rider = await db.riderProfile.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      isAvailable: true,
+    },
+  });
+
+  if (!rider) throw new ApiError(404, "Rider not found");
+
+  const newStatus =
+    isAvailable !== undefined ? Boolean(isAvailable) : !rider.isAvailable;
+
+  const updated = await db.riderProfile.update({
+    where: {
+      id,
+    },
+    data: {
+      isAvailable: newStatus,
+    },
+    select: {
+      id: true,
+      isAvailable: true,
+      user: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!updated) throw new ApiError(500, "Error updating rider status");
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        updated,
+        `Rider ${isAvailable ? "activated" : "deactivated"}`,
+      ),
+    );
+});
 
 const updateOrderStatusByAdmin = asyncHandler(async (req, res) => {});
 
