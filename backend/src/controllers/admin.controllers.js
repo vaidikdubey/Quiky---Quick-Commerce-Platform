@@ -5,6 +5,7 @@ import { ApiResponse } from "../utils/api-response.js";
 import {
   deliveryStatus,
   notificationType,
+  notificationTypeArray,
   orderStatus,
   orderStatusArray,
 } from "../utils/constants.js";
@@ -803,7 +804,86 @@ const deleteUser = asyncHandler(async (req, res) => {
   );
 });
 
-const sendBroadcastNotification = asyncHandler(async (req, res) => {});
+const sendBroadcastNotification = asyncHandler(async (req, res) => {
+  const {
+    title,
+    body,
+    type = notificationType.ORDER_PLACED,
+    role = "ALL",
+    data = null,
+    orderId,
+    storeId,
+    riderId,
+  } = req.body;
+
+  if (!title || !body)
+    throw new ApiError(400, "Title and body are required for broadcast");
+
+  if (!notificationTypeArray.includes(type))
+    throw new ApiError(400, "Invalid notification type");
+
+  // Validate role if provided
+  if (role && role !== "ALL") {
+    const validRoles = ["CLIENT", "RIDER", "STORE_MANAGER", "ADMIN"];
+    if (!validRoles.includes(role.toUpperCase())) {
+      throw new ApiError(
+        400,
+        "Invalid role. Allowed: ALL, CLIENT, RIDER, STORE_MANAGER, ADMIN",
+      );
+    }
+  }
+
+  const whereClause =
+    role && role !== "ALL"
+      ? {
+          role: role.toUpperCase(),
+        }
+      : {};
+
+  const users = await db.user.findMany({
+    where: whereClause,
+    select: {
+      id: true,
+    },
+  });
+
+  if (users.length === 0) {
+    throw new ApiError(400, "No users found matching the criteria");
+  }
+
+  // Prepare notifications with proper required fields
+  const notificationsToCreate = users.map((user) => ({
+    userId: user.id,
+    type,
+    title: title.trim(),
+    body: body.trim(),
+    data: data || Prisma.JsonNull,
+    // Use provided real IDs or fallback to a dummy valid UUID
+    // Using a constant dummy UUID for broadcasts that are not tied to any specific order/store
+    orderId: orderId || "00000000-0000-0000-0000-000000000000", // Dummy UUID
+    storeId: storeId || "00000000-0000-0000-0000-000000000000", // Dummy UUID
+    riderId: riderId || null,
+  }));
+
+  // Bulk create notifications
+  await db.notification.createMany({
+    data: notificationsToCreate,
+    skipDuplicates: true,
+  });
+
+  res.status(201).json(
+    new ApiResponse(
+      201,
+      {
+        sentTo: users.length,
+        role: role || "ALL",
+        title: title.trim(),
+        broadcastType: orderId ? "order-specific" : "general",
+      },
+      `Broadcast notification successfully sent to ${users.length} users`,
+    ),
+  );
+});
 
 export {
   getAllUsers,
