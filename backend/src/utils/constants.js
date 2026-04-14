@@ -22,6 +22,7 @@ export const paymentMethods = {
   COD: "COD",
   UPI: "UPI",
   CASH: "CASH",
+  CANCELLED: "CANCELLED",
 };
 
 export const paymentMethodsArray = Object.values(paymentMethods);

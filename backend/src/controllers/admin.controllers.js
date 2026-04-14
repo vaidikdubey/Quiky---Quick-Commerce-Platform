@@ -8,6 +8,8 @@ import {
   notificationTypeArray,
   orderStatus,
   orderStatusArray,
+  paymentMethods,
+  paymentStatus,
 } from "../utils/constants.js";
 
 const getAllUsers = asyncHandler(async (req, res) => {
@@ -271,7 +273,7 @@ const getAllOrders = asyncHandler(async (req, res) => {
 
 const toggleUserAccount = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { isActive } = req.body; // optional – if not provided, we toggle
+  const { isActive } = req.body || {}; // optional – if not provided, we toggle
 
   if (!id) throw new ApiError(400, "User ID is required");
 
@@ -331,9 +333,8 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     activeStores,
     activeRiders,
     totalOrdersToday,
-    totalRevenueToday,
+    revenueResult,
     pendingOrders,
-    avgDeliveryTime,
   ] = await Promise.all([
     db.user.count(),
     db.store.count({ where: { isActive: true } }),
@@ -350,33 +351,34 @@ const getDashboardStats = asyncHandler(async (req, res) => {
         },
       },
     }),
-    db.delivery.aggregate({
-      where: {
-        status: deliveryStatus.DELIVERED,
-        deliveryTime: { not: null },
-        pickupTime: { not: null },
-      },
-    }),
   ]);
 
   const avgTimeResult = await db.$queryRaw`
-    SELECT AVG(EXTRACT(EPOCH FROM ("deliveryTime" - "pickupTime")) / 60) as avg_minutes
-      FROM "Delivery"
-      WHERE status = 'DELIVERED' 
-        AND "deliveryTime" IS NOT NULL 
-        AND "pickupTime" IS NOT NULL
+    SELECT 
+      COALESCE(
+        AVG(
+          EXTRACT(EPOCH FROM ("deliveryTime" - "pickupTime")) / 60
+        ), 
+        0
+      )::float AS avg_minutes
+    FROM "Delivery"
+    WHERE status = 'DELIVERED' 
+      AND "deliveryTime" IS NOT NULL 
+      AND "pickupTime" IS NOT NULL
   `;
+
+  const avgDeliveryTimeMins = parseFloat(
+    avgTimeResult[0]?.avg_minutes || 0,
+  ).toFixed(1);
 
   const stats = {
     totalUsers,
     activeStores,
     activeRiders,
     ordersToday: totalOrdersToday,
-    revenueToday: parseFloat(totalOrdersToday._sum.totalAmount || 0).toFixed(2),
+    revenueToday: parseFloat(revenueResult._sum?.totalAmount || 0).toFixed(2),
     pendingOrders,
-    avgDeliveryTimeMins: parseFloat(avgTimeResult[0]?.avg_minutes || 0).toFixed(
-      1,
-    ),
+    avgDeliveryTimeMins,
     systemHealth: "Healthy",
   };
 
@@ -387,7 +389,7 @@ const getDashboardStats = asyncHandler(async (req, res) => {
 
 const toggleStoreStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { isActive } = req.body;
+  const { isActive } = req.body || {};
 
   if (!id) throw new ApiError(400, "Store ID is required");
 
@@ -434,7 +436,7 @@ const toggleStoreStatus = asyncHandler(async (req, res) => {
 
 const toggleRiderStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { isAvailable } = req.body;
+  const { isAvailable } = req.body || {};
 
   if (!id) throw new ApiError(400, "Rider ID is required");
 
@@ -517,15 +519,27 @@ const updateOrderStatusByAdmin = asyncHandler(async (req, res) => {
     throw new ApiError(400, `Cannot change status of a ${order.status} order`);
   }
 
+  const updateDate = {};
+
+  updateDate.status = status.toUpperCase();
+
+  if (status === orderStatus.DELIVERED) {
+    updateDate.paymentMethod = paymentMethods.COD;
+    updateDate.paymentStatus = paymentStatus.PAID;
+  }
+
+  if (status === orderStatus.CANCELLED) {
+    updateDate.paymentMethod = paymentMethods.CANCELLED;
+    updateDate.paymentStatus = paymentStatus.FAILED;
+  }
+
   const updatedOrder = await db.$transaction(async (tx) => {
     // Update order status
     const orderUpdate = await tx.order.update({
       where: {
         id,
       },
-      data: {
-        status,
-      },
+      data: updateDate,
       select: {
         id: true,
         status: true,
@@ -799,7 +813,7 @@ const deleteUser = asyncHandler(async (req, res) => {
         deletedUserId: id,
         name: user.name,
       },
-      "User and all related data deleted",
+      `User ${user.name} and all related data deleted`,
     ),
   );
 });
@@ -857,11 +871,9 @@ const sendBroadcastNotification = asyncHandler(async (req, res) => {
     type,
     title: title.trim(),
     body: body.trim(),
-    data: data || Prisma.JsonNull,
-    // Use provided real IDs or fallback to a dummy valid UUID
-    // Using a constant dummy UUID for broadcasts that are not tied to any specific order/store
-    orderId: orderId || "00000000-0000-0000-0000-000000000000", // Dummy UUID
-    storeId: storeId || "00000000-0000-0000-0000-000000000000", // Dummy UUID
+    data: data ? data : Prisma.JsonNull,
+    orderId: orderId || null,
+    storeId: storeId || null,
     riderId: riderId || null,
   }));
 

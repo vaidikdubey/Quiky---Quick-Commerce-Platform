@@ -29,11 +29,12 @@ router
   .route("/users/status/:id")
   .patch(isLoggedIn, checkAdmin, toggleUserAccount);
 
-router.route("/stats").get(isLoggedIn, checkAdmin, getDashboardStats); // alias
+router.route("/stats").get(isLoggedIn, checkAdmin, getDashboardStats);
 
 router
   .route("/stores/status/:id")
   .patch(isLoggedIn, checkAdmin, toggleStoreStatus);
+
 router
   .route("/riders/status/:id")
   .patch(isLoggedIn, checkAdmin, toggleRiderStatus);
@@ -44,7 +45,7 @@ router
 
 router.route("/analytics").get(isLoggedIn, checkAdmin, getPlatformAnalytics);
 
-router.route("/users/:id").delete(isLoggedIn, checkAdmin, deleteUser);
+router.route("/deleteUser/:id").delete(isLoggedIn, checkAdmin, deleteUser);
 
 router
   .route("/notify-all")
