@@ -162,7 +162,7 @@ const updateProfile = asyncHandler(async (req, res) => {
 });
 
 const getRiderRating = asyncHandler(async (req, res) => {
-  const userId = req.params;
+  const userId = req.user.id;
 
   const rating = await db.riderProfile.findUnique({
     where: {
@@ -281,7 +281,7 @@ const getAllDeliveries = asyncHandler(async (req, res) => {
           phone: true,
         },
       },
-      deliveredOrders: {
+      riderDeliveries: {
         select: {
           id: true,
           orderId: true,
@@ -297,10 +297,12 @@ const getAllDeliveries = asyncHandler(async (req, res) => {
               status: true,
               paymentMethod: true,
               paymentStatus: true,
+              _count: {
+                select: {
+                  items: true,
+                },
+              },
             },
-          },
-          _count: {
-            items: true,
           },
         },
       },
@@ -355,7 +357,7 @@ const getDeliveryById = asyncHandler(async (req, res) => {
           phone: true,
         },
       },
-      deliveredOrders: {
+      riderDeliveries: {
         select: {
           id: true,
           orderId: true,
@@ -371,18 +373,13 @@ const getDeliveryById = asyncHandler(async (req, res) => {
               status: true,
               paymentMethod: true,
               paymentStatus: true,
+              _count: {
+                select: {
+                  items: true,
+                },
+              },
             },
           },
-          _count: {
-            items: true,
-          },
-        },
-      },
-      _count: {
-        select: {
-          deliveredOrders: true,
-          riderDeliveries: true,
-          notifications: true,
         },
       },
     },
@@ -396,17 +393,53 @@ const getDeliveryById = asyncHandler(async (req, res) => {
 const getRiderEarnings = asyncHandler(async (req, res) => {
   const riderId = req.user.id;
 
-  const { startDate, endDate, limit = 30 } = req.body;
+  let { startDate, endDate, limit = 30 } = req.query;
 
+  //Edge cases for dates and limit check
+
+  //Validate limit
+  limit = parseInt(limit);
+  if (isNaN(limit) || limit < 1) limit = 30;
+  if (limit > 500) limit = 500;
+
+  //Date validation and normalization
   let dateFilter = {};
 
   if (startDate || endDate) {
-    dateFilter = {
-      createdAt: {
-        ...(startDate && { gte: new Date(startDate) }), //if start date then >= start date
-        ...(endDate && { lte: new Date(endDate) }), //if end date then <= end date
-      },
-    };
+    const filter = {};
+
+    if (startDate) {
+      const start = new Date(startDate);
+
+      if (isNaN(start.getTime()))
+        throw new ApiError(400, "Invalid startDate format. Use YYYY-MM-DD");
+
+      // Set to start of the day (00:00:00)
+      start.setHours(0, 0, 0, 0);
+      filter.gte = start;
+    }
+
+    if (endDate) {
+      const end = new Date(endDate);
+
+      if (isNaN(end.getTime()))
+        throw new ApiError(400, "Invalid endDate format. Use YYYY-MM-DD");
+
+      // Set to end of the day (23:59:59.999)
+      end.setHours(23, 59, 59, 999);
+      filter.lte = end;
+    }
+
+    //startDate after endDate
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      if (start > end)
+        throw new ApiError(400, "startDate cannot be after endDate");
+    }
+
+    dateFilter = { createdAt: filter };
   }
 
   const earnings = await db.delivery.findMany({

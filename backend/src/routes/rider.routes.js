@@ -25,7 +25,7 @@ router
   .get(isLoggedIn, checkPermission(riderPermission), getRiderRating);
 
 router
-  .route("/setRating/:id")
+  .route("/rating/:id")
   .patch(isLoggedIn, checkPermission(clientPermission), updateRiderRating);
 
 router
@@ -38,6 +38,6 @@ router
 
 router
   .route("/earnings")
-  .post(isLoggedIn, checkPermission(riderPermission), getRiderEarnings);
+  .get(isLoggedIn, checkPermission(riderPermission), getRiderEarnings);
 
 export default router;
