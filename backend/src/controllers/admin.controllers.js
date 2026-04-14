@@ -2,6 +2,7 @@ import { db } from "../db/db.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
+import { deliveryStatus } from "../utils/constants.js";
 
 const getAllUsers = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, search = "", role } = req.query;
@@ -315,7 +316,68 @@ const toggleUserAccount = asyncHandler(async (req, res) => {
     );
 });
 
-const getDashboardStats = asyncHandler(async (req, res) => {});
+const getDashboardStats = asyncHandler(async (req, res) => {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [
+    totalUsers,
+    activeStores,
+    activeRiders,
+    totalOrdersToday,
+    totalRevenueToday,
+    pendingOrders,
+    avgDeliveryTime,
+  ] = await Promise.all([
+    db.user.count(),
+    db.store.count({ where: { isActive: true } }),
+    db.riderProfile.count({ where: { isAvailable: true } }),
+    db.order.count({ where: { createdAt: { gte: todayStart } } }),
+    db.order.aggregate({
+      where: { createdAt: { gte: todayStart }, paymentStatus: "PAID" },
+      _sum: { totalAmount: true },
+    }),
+    db.order.count({
+      where: {
+        status: {
+          in: ["PENDING", "CONFIRMED", "PREPARING", "READY_FOR_PICKUP"],
+        },
+      },
+    }),
+    db.delivery.aggregate({
+      where: {
+        status: deliveryStatus.DELIVERED,
+        deliveryTime: { not: null },
+        pickupTime: { not: null },
+      },
+    }),
+  ]);
+
+  const avgTimeResult = await db.$queryRaw`
+    SELECT AVG(EXTRACT(EPOCH FROM ("deliveryTime" - "pickupTime")) / 60) as avg_minutes
+      FROM "Delivery"
+      WHERE status = 'DELIVERED' 
+        AND "deliveryTime" IS NOT NULL 
+        AND "pickupTime" IS NOT NULL
+  `;
+
+  const stats = {
+    totalUsers,
+    activeStores,
+    activeRiders,
+    ordersToday: totalOrdersToday,
+    revenueToday: parseFloat(totalOrdersToday._sum.totalAmount || 0).toFixed(2),
+    pendingOrders,
+    avgDeliveryTimeMins: parseFloat(avgTimeResult[0]?.avg_minutes || 0).toFixed(
+      1,
+    ),
+    systemHealth: "Healthy",
+  };
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, stats, "Dashboard statistics fetched"));
+});
 
 const toggleStoreStatus = asyncHandler(async (req, res) => {});
 
