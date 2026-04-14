@@ -730,7 +730,9 @@ const getPlatformAnalytics = asyncHandler(async (req, res) => {
     activeStores,
     totalRiders,
     activeRiders,
-    averageOrderValue: parseFloat(avgOrderValue._avg.totalAmount || 0).toFixed(2),
+    averageOrderValue: parseFloat(avgOrderValue._avg.totalAmount || 0).toFixed(
+      2,
+    ),
     ordersByStatus,
     topPerformingStores: topStoresWithName,
     growthNote: "Data based on last " + days + " days",
@@ -741,7 +743,65 @@ const getPlatformAnalytics = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, analytics, "Platform analytics fetched"));
 });
 
-const deleteUser = asyncHandler(async (req, res) => {});
+const deleteUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const user = await db.user.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      id: true,
+      role: true,
+      name: true,
+      email: true,
+    },
+  });
+
+  if (!user) throw new ApiError(404, "User not found");
+
+  // Security: Prevent deletion of ADMIN accounts
+  if (user.role === "ADMIN") {
+    throw new ApiError(403, "Cannot delete admin account");
+  }
+
+  await db.$transaction(async (tx) => {
+    // Delete related data first (cascade will handle most, but we do explicit for safety)
+    await tx.riderProfile.deleteMany({
+      where: {
+        userId: id,
+      },
+    });
+    await tx.address.deleteMany({
+      where: {
+        userId: id,
+      },
+    });
+    await tx.notification.deleteMany({
+      where: {
+        userId: id,
+      },
+    });
+
+    // Delete user (Prisma will cascade delete orders, etc. based on schema design)
+    await tx.user.delete({
+      where: {
+        id,
+      },
+    });
+  });
+
+  res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        deletedUserId: id,
+        name: user.name,
+      },
+      "User and all related data deleted",
+    ),
+  );
+});
 
 const sendBroadcastNotification = asyncHandler(async (req, res) => {});
 
