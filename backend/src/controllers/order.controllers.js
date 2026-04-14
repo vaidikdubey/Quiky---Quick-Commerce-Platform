@@ -6,7 +6,9 @@ import { asyncHandler } from "../utils/async-handler.js";
 import {
   orderStatus,
   orderStatusArray,
+  paymentMethods,
   paymentMethodsArray,
+  paymentStatus,
   paymentStatusArray,
 } from "../utils/constants.js";
 
@@ -585,6 +587,8 @@ const cancelOrder = asyncHandler(async (req, res) => {
     },
     data: {
       status: "CANCELLED",
+      paymentMethod: paymentMethods.CANCELLED,
+      paymentStatus: paymentStatus.FAILED,
     },
     select: {
       clientId: true,
