@@ -2,7 +2,12 @@ import { db } from "../db/db.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { ApiError } from "../utils/api-error.js";
 import { ApiResponse } from "../utils/api-response.js";
-import { deliveryStatus } from "../utils/constants.js";
+import {
+  deliveryStatus,
+  notificationType,
+  orderStatus,
+  orderStatusArray,
+} from "../utils/constants.js";
 
 const getAllUsers = asyncHandler(async (req, res) => {
   const { page = 1, limit = 20, search = "", role } = req.query;
@@ -477,7 +482,134 @@ const toggleRiderStatus = asyncHandler(async (req, res) => {
     );
 });
 
-const updateOrderStatusByAdmin = asyncHandler(async (req, res) => {});
+const updateOrderStatusByAdmin = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (!id) throw new ApiError(400, "Order ID is required");
+
+  if (!status) throw new ApiError(400, "Order status is required");
+
+  if (!orderStatusArray.includes(status))
+    throw new ApiError(400, "Invalid order status");
+
+  const order = await db.order.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      id: true,
+      status: true,
+      riderId: true,
+      clientId: true,
+      storeId: true,
+    },
+  });
+
+  if (!order) throw new ApiError(404, "Order not found");
+
+  // Prevent updating already delivered or cancelled orders unless admin forces from backend
+  if (
+    order.status === orderStatus.DELIVERED ||
+    order.status === orderStatus.CANCELLED
+  ) {
+    throw new ApiError(400, `Cannot change status of a ${order.status} order`);
+  }
+
+  const updatedOrder = await db.$transaction(async (tx) => {
+    // Update order status
+    const orderUpdate = await tx.order.update({
+      where: {
+        id,
+      },
+      data: {
+        status,
+      },
+      select: {
+        id: true,
+        status: true,
+        totalAmount: true,
+        clientId: true,
+        storeId: true,
+        riderId: true,
+      },
+    });
+
+    // If status is DELIVERED and rider exists → free the rider
+    if (status === orderStatus.DELIVERED && order.riderId) {
+      await tx.riderProfile.update({
+        where: {
+          id: order.riderId,
+        },
+        data: {
+          isAvailable: true,
+          currentOrderId: null,
+        },
+      });
+
+      // Mark delivery as completed if exists
+      await tx.delivery.updateMany({
+        where: {
+          orderId: id,
+        },
+        data: {
+          status: deliveryStatus.DELIVERED,
+          deliveryTime: new Date(),
+        },
+      });
+    }
+
+    // If status is CANCELLED → free rider if assigned
+    if (status === orderStatus.CANCELLED && order.riderId) {
+      await tx.riderProfile.update({
+        where: {
+          id: order.riderId,
+        },
+        data: {
+          isAvailable: true,
+          currentOrderId: null,
+        },
+      });
+
+      await tx.delivery.updateMany({
+        where: {
+          orderId: id,
+        },
+        data: {
+          status: deliveryStatus.FAILED,
+        },
+      });
+    }
+
+    return orderUpdate;
+  });
+
+  // Create notification for client
+  await db.notification.create({
+    data: {
+      userId: updatedOrder.clientId,
+      type:
+        status === orderStatus.CANCELLED
+          ? notificationType.ORDER_CANCELLED
+          : notificationType.ORDER_CONFIRMED,
+      title: `Order ${status}`,
+      body: `Your order #${updatedOrder.id.slice(-6).toUpperCase()} status has been updated to ${status} by admin.`,
+      orderId: updatedOrder.id,
+      storeId: updatedOrder.storeId,
+      riderId: updatedOrder.riderId || null,
+    },
+  });
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        updatedOrder,
+        `Order status updated to ${status} successfully by admin`,
+      ),
+    );
+});
 
 const getPlatformAnalytics = asyncHandler(async (req, res) => {});
 
