@@ -379,7 +379,52 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, stats, "Dashboard statistics fetched"));
 });
 
-const toggleStoreStatus = asyncHandler(async (req, res) => {});
+const toggleStoreStatus = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { isActive } = req.body;
+
+  if (!id) throw new ApiError(400, "Store ID is required");
+
+  const store = await db.store.findUnique({
+    where: {
+      id,
+    },
+    select: {
+      isActive: true,
+    },
+  });
+
+  if (!store) throw new ApiError(404, "Store not found");
+
+  const newStatus =
+    isActive !== undefined ? Boolean(isActive) : !store.isActive;
+
+  const updated = await db.store.update({
+    where: {
+      id,
+    },
+    data: {
+      isActive: newStatus,
+    },
+    select: {
+      id: true,
+      name: true,
+      isActive: true,
+    },
+  });
+
+  if (!updated) throw new ApiError(500, "Error updating store status");
+
+  res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        updated,
+        `Store ${newStatus ? "activated" : "deactivated"}`,
+      ),
+    );
+});
 
 const toggleRiderStatus = asyncHandler(async (req, res) => {});
 
