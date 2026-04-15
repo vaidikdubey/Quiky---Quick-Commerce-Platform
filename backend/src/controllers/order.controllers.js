@@ -17,19 +17,22 @@ const createOrder = asyncHandler(async (req, res) => {
 
   const {
     storeId,
-    totalAmount,
     status = "PENDING",
     paymentMethod,
     paymentStatus,
     addressId,
+    items,
   } = req.body;
 
   //Data validation
-  if (!clientId || !storeId || !totalAmount || !paymentMethod || !paymentStatus)
+  if (!clientId || !storeId || !paymentMethod || !paymentStatus)
     throw new ApiError(400, "All fields are required");
 
-  if (isNaN(totalAmount) || totalAmount < 0)
-    throw new ApiError(400, "Invalid total amount");
+  if (!items || !Array.isArray(items) || items.length === 0)
+    throw new ApiError(
+      400,
+      "Invalid items value. Items should be an array with atleast one item",
+    );
 
   if (!orderStatusArray.includes(status))
     throw new ApiError(400, "Invalid order status");
@@ -42,8 +45,6 @@ const createOrder = asyncHandler(async (req, res) => {
 
   if (!paymentStatusArray.includes(paymentStatus))
     throw new ApiError(400, "Invalid payment status");
-
-  const amount = parseFloat(totalAmount);
 
   let selectedAddress;
 
@@ -101,59 +102,99 @@ const createOrder = asyncHandler(async (req, res) => {
       );
   }
 
-  const newOrder = await db.order.create({
-    data: {
-      clientId,
-      storeId,
-      totalAmount: amount,
-      status,
-      paymentMethod,
-      paymentStatus,
-      addressId,
-    },
-    select: {
-      id: true,
-      client: {
+  const result = await db.$transaction(async (tx) => {
+    let calculatedTotal = 0;
+    const orderItemsToCreate = [];
+
+    for (const item of items) {
+      const { productId, quantity, price } = item;
+
+      if (!productId || !quantity || quantity < 1 || !price || price <= 0)
+        throw new ApiError(
+          400,
+          "Each item must have valid productId, quantity (>0) and price",
+        );
+
+      const product = await tx.product.findUnique({
+        where: {
+          id: productId,
+        },
         select: {
-          id: true,
+          storeId: true,
+          stock: true,
+          isAvailable: true,
           name: true,
-          email: true,
-          phone: true,
+        },
+      });
+
+      if (!product) throw new ApiError(404, `Product ${productId} not found`);
+      if (product.storeId !== storeId)
+        throw new ApiError(400, "Some products do not belong to this store");
+      if (!product.isAvailable || product.stock < quantity)
+        throw new ApiError(400, `Insufficient stock for ${product.name}`);
+
+      calculatedTotal += price * quantity;
+
+      orderItemsToCreate.push({
+        productId,
+        quantity,
+        price,
+      });
+
+      await tx.product.update({
+        where: {
+          id: productId,
+        },
+        data: {
+          stock: { decrement: quantity },
+        },
+      });
+    }
+
+    const order = await tx.order.create({
+      data: {
+        clientId,
+        storeId,
+        totalAmount: parseFloat(calculatedTotal.toFixed(2)),
+        paymentMethod,
+        paymentStatus,
+        status,
+        addressId: selectedAddress,
+        items: {
+          create: orderItemsToCreate,
         },
       },
-      store: {
-        select: {
-          id: true,
-          name: true,
-          address: true,
-          latitude: true,
-          longitude: true,
-          pincode: true,
+      include: {
+        items: {
+          select: {
+            id: true,
+            productId: true,
+            quantity: true,
+            price: true,
+            product: {
+              select: {
+                name: true,
+                imageUrl: true,
+              },
+            },
+          },
+        },
+        deliveryAddress: true,
+        store: {
+          select: {
+            name: true,
+            address: true,
+          },
         },
       },
-      totalAmount: true,
-      status: true,
-      paymentMethod: true,
-      paymentStatus: true,
-      deliveryAddress: {
-        select: {
-          label: true,
-          fullAddress: true,
-          latitude: true,
-          longitude: true,
-          pincode: true,
-          city: true,
-          state: true,
-          landmark: true,
-        },
-      },
-      createdAt: true,
-    },
+    });
+
+    return order;
   });
 
-  if (!newOrder) throw new ApiError(500, "Error creating new order");
+  if (!result) throw new ApiError(500, "Error creating new order");
 
-  res.status(201).json(new ApiResponse(201, newOrder, "New order created"));
+  res.status(201).json(new ApiResponse(201, result, "New order created"));
 });
 
 const getAllOrders = asyncHandler(async (req, res) => {
@@ -228,6 +269,14 @@ const getAllOrders = asyncHandler(async (req, res) => {
           pickupTime: true,
           deliveryTime: true,
           estimatedTime: true,
+        },
+      },
+      items: {
+        select: {
+          name: true,
+          description: true,
+          price: true,
+          imageUrl: true,
         },
       },
       _count: {
@@ -321,6 +370,22 @@ const getOrderById = asyncHandler(async (req, res) => {
           pickupTime: true,
           deliveryTime: true,
           estimatedTime: true,
+        },
+      },
+      items: {
+        select: {
+          id: true,
+          productId: true,
+          quantity: true,
+          price: true,
+          product: {
+            select: {
+              name: true,
+              description: true,
+              price: true,
+              imageUrl: true,
+            },
+          },
         },
       },
       _count: {
@@ -764,6 +829,16 @@ const getAllOrdersForStore = asyncHandler(async (req, res) => {
               phone: true,
             },
           },
+        },
+      },
+      items: {
+        select: {
+          name: true,
+          description: true,
+          price: true,
+          imageUrl: true,
+          stock: true,
+          isAvailable: true,
         },
       },
       _count: {
