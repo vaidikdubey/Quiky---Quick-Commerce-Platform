@@ -49,24 +49,7 @@ const createOrder = asyncHandler(async (req, res) => {
   let selectedAddress;
 
   if (addressId) {
-    selectedAddress = await db.address.findUnique({
-      where: {
-        id: addressId,
-        userId: clientId,
-      },
-      select: {
-        label: true,
-        fullAddress: true,
-        latitude: true,
-        longitude: true,
-        pincode: true,
-        city: true,
-        state: true,
-        landmark: true,
-      },
-    });
-
-    if (!selectedAddress) throw new ApiError(404, "Address not found");
+    selectedAddress = addressId;
   } else {
     //Fallback: when user does not provide address, we use the default address
     const userWithDefault = await db.user.findUnique({
@@ -79,21 +62,14 @@ const createOrder = asyncHandler(async (req, res) => {
             isDefault: true,
           },
           select: {
-            label: true,
-            fullAddress: true,
-            latitude: true,
-            longitude: true,
-            pincode: true,
-            city: true,
-            state: true,
-            landmark: true,
+            id: true,
           },
           take: 1,
         },
       },
     });
 
-    selectedAddress = userWithDefault?.addresses?.[0];
+    selectedAddress = userWithDefault?.addresses?.[0].id;
 
     if (!selectedAddress)
       throw new ApiError(
@@ -107,7 +83,10 @@ const createOrder = asyncHandler(async (req, res) => {
     const orderItemsToCreate = [];
 
     for (const item of items) {
-      const { productId, quantity, price } = item;
+      let { productId, quantity, price } = item;
+
+      quantity = parseInt(quantity);
+      price = parseFloat(price);
 
       if (!productId || !quantity || quantity < 1 || !price || price <= 0)
         throw new ApiError(
@@ -273,10 +252,17 @@ const getAllOrders = asyncHandler(async (req, res) => {
       },
       items: {
         select: {
-          name: true,
-          description: true,
+          productId: true,
+          quantity: true,
           price: true,
-          imageUrl: true,
+          product: {
+            select: {
+              name: true,
+              description: true,
+              price: true,
+              imageUrl: true,
+            },
+          },
         },
       },
       _count: {
@@ -833,12 +819,19 @@ const getAllOrdersForStore = asyncHandler(async (req, res) => {
       },
       items: {
         select: {
-          name: true,
-          description: true,
+          productId: true,
+          quantity: true,
           price: true,
-          imageUrl: true,
-          stock: true,
-          isAvailable: true,
+          product: {
+            select: {
+              name: true,
+              description: true,
+              price: true,
+              imageUrl: true,
+              stock: true,
+              isAvailable: true,
+            },
+          },
         },
       },
       _count: {
