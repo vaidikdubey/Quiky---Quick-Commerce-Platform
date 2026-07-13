@@ -326,7 +326,7 @@ const toggleUserAccount = asyncHandler(async (req, res) => {
 
 const getDashboardStats = asyncHandler(async (req, res) => {
   const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  todayStart.setHours(0, 0, 0, 0); //Converting to start of the day
 
   const [
     totalUsers,
@@ -519,18 +519,18 @@ const updateOrderStatusByAdmin = asyncHandler(async (req, res) => {
     throw new ApiError(400, `Cannot change status of a ${order.status} order`);
   }
 
-  const updateDate = {};
+  const updateData = {};
 
-  updateDate.status = status.toUpperCase();
+  updateData.status = status.toUpperCase();
 
   if (status === orderStatus.DELIVERED) {
-    updateDate.paymentMethod = paymentMethods.COD;
-    updateDate.paymentStatus = paymentStatus.PAID;
+    updateData.paymentMethod = paymentMethods.COD;
+    updateData.paymentStatus = paymentStatus.PAID;
   }
 
   if (status === orderStatus.CANCELLED) {
-    updateDate.paymentMethod = paymentMethods.CANCELLED;
-    updateDate.paymentStatus = paymentStatus.FAILED;
+    updateData.paymentMethod = paymentMethods.CANCELLED;
+    updateData.paymentStatus = paymentStatus.FAILED;
   }
 
   const updatedOrder = await db.$transaction(async (tx) => {
@@ -539,7 +539,7 @@ const updateOrderStatusByAdmin = asyncHandler(async (req, res) => {
       where: {
         id,
       },
-      data: updateDate,
+      data: updateData,
       select: {
         id: true,
         status: true,
