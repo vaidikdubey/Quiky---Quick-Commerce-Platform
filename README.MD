@@ -1,195 +1,135 @@
-# Quiky – Quick Commerce Platform 🛍️
+# Quiky – Quick Commerce Platform (Backend) 🛍️
 
 ## Overview
 
-**Quiky** is a quick-commerce platform designed to deliver groceries and daily essentials within **10–20 minutes**. The system connects **customers, dark stores, delivery riders, and administrators** through a coordinated platform that enables real-time inventory management, rapid order fulfillment, and efficient delivery routing.
+**Quiky** is the backend for a quick-commerce platform designed to power grocery and daily-essentials delivery within **10–20 minutes**. It provides a production-ready REST API layer connecting **customers, dark stores, delivery riders, and administrators** through a coordinated system for real-time inventory management, rapid order fulfillment, and delivery routing logic.
 
-Unlike traditional e-commerce systems, Quiky focuses on **instant local fulfillment using nearby dark stores** and optimized rider assignment. The platform is structured as a multi-role ecosystem consisting of mobile apps and management dashboards that work together to complete the delivery cycle quickly.
+Unlike traditional e-commerce backends, Quiky is built around **localized fulfillment from nearby dark stores** and optimized rider assignment — the core engine that a quick-commerce product would run on, independent of any specific client (web, mobile, or admin dashboard).
+
+This repository contains the **complete, tested, and deployed backend**. No frontend/client application is included or in progress.
 
 ---
 
 ## Problem Statement
 
-Urban consumers increasingly demand **instant delivery of groceries and essentials**. Traditional marketplaces and supermarkets operate with longer fulfillment cycles and centralized warehouses, making them inefficient for rapid delivery.
+Urban consumers increasingly demand **instant delivery of groceries and essentials**. Traditional marketplaces and centralized-warehouse supermarkets operate on longer fulfillment cycles, making them inefficient for rapid delivery.
 
-To solve this, Quiky introduces a **localized quick-commerce architecture** using dark stores positioned close to customers. This allows orders to be processed, packed, and delivered within minutes.
+Quiky's backend solves the coordination problem underneath this: routing orders to the nearest dark store, managing real-time inventory state, and assigning riders efficiently enough to support a 10–20 minute delivery promise.
 
 ---
 
 ## Objectives
 
-The primary goals of the platform include:
-
-* Provide customers with a **fast and intuitive ordering experience**
-* Enable dark stores to **manage real-time inventory and prepare orders efficiently**
-* Equip delivery riders with tools to **receive and complete delivery assignments**
-* Provide administrators with a **centralized control panel for platform management**
-* Support **secure checkout through Cash on Delivery (COD) and UPI payments**
+- Enable a **fast, reliable ordering API** that a client app could build directly on top of
+- Support dark stores in **managing real-time inventory** and preparing orders efficiently
+- Provide delivery riders **structured assignment and status-update workflows** via API
+- Give administrators **centralized control** over stores, riders, and platform-wide data
+- Support **secure checkout logic** for both Cash on Delivery (COD) and UPI payment flows
 
 ---
 
-## System Roles
+## System Roles (API-Level)
 
-### Client (Customer)
+Each role below is represented through role-scoped API endpoints and permissions — not a client application. A frontend consuming these APIs is not part of this repo.
 
-Customers interact with the platform through the client app to browse products, place orders, and track deliveries.
+### Customer
 
-Capabilities:
-
-* Browse nearby dark store inventory
-* Add products to cart
-* Place orders instantly
-* Track delivery status in real time
-* Choose payment method (COD or UPI)
-
----
+- Browse nearby dark store inventory
+- Cart and order placement logic
+- Order tracking and status retrieval
+- Payment method selection (COD or UPI)
 
 ### Delivery Rider
 
-Delivery riders are responsible for collecting orders from dark stores and delivering them to customers.
-
-Capabilities:
-
-* Receive assigned delivery requests
-* View pickup location and delivery address
-* Navigate using map integration
-* Update order status (Picked Up / Delivered)
-
----
+- Receive assigned delivery requests
+- Retrieve pickup/delivery location data
+- Update order status (Picked Up / Delivered)
 
 ### Dark Store Manager
 
-Dark store managers oversee product inventory and order preparation.
-
-Capabilities:
-
-* Add or update product inventory
-* Monitor incoming orders
-* Prepare items for dispatch
-* Notify riders when orders are ready for pickup
-
----
+- Add/update product inventory
+- Monitor and manage incoming orders
+- Trigger pickup notifications to riders
 
 ### Super Admin
 
-Super Admins manage the entire ecosystem and monitor platform performance.
-
-Capabilities:
-
-* Add or manage dark stores
-* Register and manage delivery riders
-* Monitor platform-wide orders
-* Access analytics and performance metrics
-* Manage role-based access control
+- Manage dark stores and riders
+- Monitor platform-wide orders
+- Access analytics and role-based access control
 
 ---
 
-## Core Features
+## Core Backend Features
 
-### Client Application
-
-* Product browsing from nearby dark stores
-* Cart and checkout system
-* Order placement and tracking
-* Secure payments via **COD** and **UPI**
-* Real-time order status updates
-
----
-
-### Delivery Rider Application
-
-* Assigned delivery list
-* Pickup and delivery workflow
-* Status updates for each order
-* Navigation to pickup and drop locations
+- **Inventory management** - full CRUD for dark store product inventory
+- **Order lifecycle management** - from placement → preparation → rider assignment → delivery, with state transitions enforced server-side
+- **Role-based access control (RBAC)** - scoped permissions across Customer, Rider, Dark Store Manager, and Super Admin
+- **Rider assignment logic** - automatic assignment workflow based on order and store data
+- **Payment handling** - COD and UPI flows, with Razorpay integration in test mode
+- **JWT-based authentication** - secure, role-aware auth across all endpoints
+- **Analytics endpoints** - platform-wide order and performance data for admin use
 
 ---
 
-### Dark Store Management Panel
+## Basic MVP Workflow (Backend Perspective)
 
-* Inventory management system
-* Product CRUD operations
-* Order management dashboard
-* Pickup notification system for riders
-
----
-
-### Super Admin Dashboard
-
-* Centralized management interface
-* Dark store and rider administration
-* Order monitoring and reporting
-* Platform analytics and operational insights
-
----
-
-## Basic MVP Workflow
-
-1. Client browses products from nearby dark store
-2. Items are added to the cart
-3. Client places the order
-4. Payment option selected (COD / UPI)
-5. Dark store receives the order notification
-6. Store prepares the order
-7. Rider is assigned automatically
-8. Rider picks up the order
-9. Order is delivered to the client
-
----
-
-## Deliverables (MVP Scope)
-
-The Minimum Viable Product includes:
-
-* Client application with product browsing, cart, checkout, and tracking
-* Integrated payment options (COD and UPI)
-* Rider application for managing assigned deliveries
-* Dark store dashboard for inventory and order management
-* Super admin panel for managing riders, stores, and analytics
-* End-to-end functional workflow using **mock APIs, dummy payment gateway, and simulated map services**
+1. Customer request hits inventory API for nearby dark store products
+2. Order placed via checkout API; payment method recorded (COD/UPI)
+3. Dark store receives order via order-management endpoint
+4. Store updates preparation status
+5. Rider auto-assigned via assignment logic
+6. Rider updates status through pickup → delivery lifecycle
+7. Order marked complete; data available via admin analytics endpoints
 
 ---
 
 ## Tech Stack
 
-### Frontend
-
-* React / React Native (mobile apps, future enhancement)
-
 ### Backend
 
-* Node.js + Express
+- Node.js + Express
 
 ### Database
 
-* PostgreSQL
+- PostgreSQL + Prisma ORM
 
 ### Authentication
 
-* JWT based authentication
+- JWT-based authentication, RBAC across all roles
 
 ### Other Integrations
 
-* Map APIs for navigation (Google Maps)
-* Payment gateway simulation (Razorpay Test Mode)
-* Push notifications for order updates
+- Payment gateway simulation (Razorpay Test Mode)
+- Map/geolocation data handling for rider assignment logic
+
+### Testing & Deployment
+
+- Fully tested backend (unit/integration)
+- Deployed and live
 
 ---
 
-## Future Improvements
+## Status
 
-Possible enhancements beyond MVP:
+✅ **Backend: Complete** - all endpoints listed above are implemented, tested, and deployed.
+❌ **Frontend: Not built** - this repo is backend-only by design. See Future Enhancements below.
 
-* Mobile app for riders, customers and dark store managers
-* AI-based rider assignment
-* Dynamic inventory forecasting
-* Real payment gateway integration
-* Multi-city dark store support
-* Customer loyalty programs
-* Delivery ETA prediction system
+---
+
+## Future Enhancements
+
+- Client application (web/mobile) consuming this API
+- Rider mobile app
+- Dark store and Super Admin dashboards
+- AI-based rider assignment
+- Dynamic inventory forecasting
+- Real (non-simulated) payment gateway integration
+- Multi-city dark store support
+- Customer loyalty programs
+- Delivery ETA prediction system
 
 ---
 
 ## Conclusion
 
-Quiky demonstrates a scalable architecture for **modern quick-commerce systems**. By combining localized inventory, real-time order management, and optimized rider logistics, the platform delivers an efficient solution for ultra-fast urban deliveries.
+Quiky's backend demonstrates a scalable, production-ready architecture for **modern quick-commerce systems** - role-based order orchestration, inventory management, and rider logistics, built and tested as a standalone API layer ready for any client to consume.
