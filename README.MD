@@ -1,4 +1,9 @@
-# Quiky – Quick Commerce Platform (Backend) 🛍️
+# [Quiky – Quick Commerce Platform 🛍️](https://quiky-playground.vercel.app)
+
+<p align="center">
+  <a href="https://quiky-playground.vercel.app">🌐 Live Playground</a> •
+  <a href="https://github.com/vaidikdubey/Quiky---Quick-Commerce-Platform">📂 Repository</a>
+</p>
 
 ## Overview
 
@@ -65,7 +70,6 @@ Each role below is represented through role-scoped API endpoints and permissions
 - **Order lifecycle management** - from placement → preparation → rider assignment → delivery, with state transitions enforced server-side
 - **Role-based access control (RBAC)** - scoped permissions across Customer, Rider, Dark Store Manager, and Super Admin
 - **Rider assignment logic** - automatic assignment workflow based on order and store data
-- **Payment handling** - COD and UPI flows, with Razorpay integration in test mode
 - **JWT-based authentication** - secure, role-aware auth across all endpoints
 - **Analytics endpoints** - platform-wide order and performance data for admin use
 
@@ -97,14 +101,9 @@ Each role below is represented through role-scoped API endpoints and permissions
 
 - JWT-based authentication, RBAC across all roles
 
-### Other Integrations
-
-- Payment gateway simulation (Razorpay Test Mode)
-- Map/geolocation data handling for rider assignment logic
-
 ### Testing & Deployment
 
-- Fully tested backend (unit/integration)
+- Fully tested backend
 - Deployed and live
 
 ---
@@ -112,14 +111,12 @@ Each role below is represented through role-scoped API endpoints and permissions
 ## Status
 
 ✅ **Backend: Complete** - all endpoints listed above are implemented, tested, and deployed.
-❌ **Frontend: Not built** - this repo is backend-only by design. See Future Enhancements below.
+✅ **Frontend: Playground** - the frontend for this repository is a playground to test and see all backend routes.
 
 ---
 
 ## Future Enhancements
 
-- Client application (web/mobile) consuming this API
-- Rider mobile app
 - Dark store and Super Admin dashboards
 - AI-based rider assignment
 - Dynamic inventory forecasting
