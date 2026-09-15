@@ -15,6 +15,14 @@ This repository contains the **complete, tested, and deployed backend**. No fron
 
 ---
 
+## Screenshots
+
+| Landing Page | Playground |
+|---|---|
+| ![Landing](./frontend/public/images/landing.png) | ![Playground](./frontend/public/images/playground.png) |
+
+---
+
 ## Problem Statement
 
 Urban consumers increasingly demand **instant delivery of groceries and essentials**. Traditional marketplaces and centralized-warehouse supermarkets operate on longer fulfillment cycles, making them inefficient for rapid delivery.
